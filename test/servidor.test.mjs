@@ -68,6 +68,15 @@ test('fetch de servidor do Node, o mesmo do adaptador do nucleo, passa apesar de
   assert.equal(r.status, 200)
 })
 
+test('/pedidos/:id so responde a GET; outros metodos recebem o mesmo 404 padrao', async () => {
+  const padrao = await (await fetch(`${base}/pedidos/9999`, como('marina'))).text()
+  for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+    const r = await fetch(`${base}/pedidos/8821`, { method, ...como('marina') })
+    assert.equal(r.status, 404, method)
+    assert.equal(await r.text(), padrao, method)
+  }
+})
+
 test('id com percent-encoding malformado recebe 404 e o servidor continua de pe', async () => {
   const r = await fetch(`${base}/pedidos/%E0`, como('marina'))
   assert.equal(r.status, 404)

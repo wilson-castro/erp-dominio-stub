@@ -16,9 +16,10 @@ export function projetar(pedido, ator) {
     id: pedido.id,
     status: pedido.status,
     versao: pedido.versao,
-    fornecedor: pedido.fornecedor,
-    itens: pedido.itens,
-    remessas: pedido.remessas,
+    // cópias: `projetar` é exportado, e mutar o resultado não pode vazar para o fixture
+    fornecedor: structuredClone(pedido.fornecedor),
+    itens: structuredClone(pedido.itens),
+    remessas: structuredClone(pedido.remessas),
     _permissoes: {
       // Record COMPLETO. Fatia 1 é somente leitura, então tudo nega — mas as
       // quatro chaves existem, e é isso que o contrato exige.
@@ -30,7 +31,7 @@ export function projetar(pedido, ator) {
   }
 
   // ausência total, sem placeholder: a chave só é criada quando autorizada
-  if (podeComercial) projetado.condicaoComercial = pedido.condicaoComercial
+  if (podeComercial) projetado.condicaoComercial = structuredClone(pedido.condicaoComercial)
 
   return projetado
 }

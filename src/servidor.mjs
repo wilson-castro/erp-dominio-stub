@@ -44,7 +44,8 @@ export const criarServidor = () => createServer((req, res) => {
   if (!ator) return json(res, 401, { codigo: 'SESSAO_EXPIRADA' })
 
   const m = /^\/pedidos\/([^/?]+)$/.exec(req.url ?? '')
-  if (!m) return json(res, 404, { codigo: 'ERRO_INTERNO' })
+  // fatia 1 é somente leitura: outro verbo recebe o mesmo 404, sem anunciar a rota
+  if (!m || req.method !== 'GET') return json(res, 404, { codigo: 'ERRO_INTERNO' })
 
   let id
   // `%E0` lança URIError; sem o try, uma requisição derruba o stub

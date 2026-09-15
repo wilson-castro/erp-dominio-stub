@@ -39,3 +39,13 @@ test('_permissoes e Record completo para todos os atores autorizados', () => {
     for (const a of acoes) assert.equal(typeof proj(u)._permissoes[a], 'boolean')
   }
 })
+
+test('mutar a projecao nao altera o fixture visto pelos proximos atores', () => {
+  const p = proj('marina')
+  p.condicaoComercial.margem = 0.99
+  p.itens[0].quantidade = 1
+  p.fornecedor.nome = 'outro'
+  assert.equal(PEDIDO_8821.condicaoComercial.margem, 0.17)
+  assert.equal(PEDIDO_8821.itens[0].quantidade, 120)
+  assert.equal(PEDIDO_8821.fornecedor.nome, 'Metalúrgica Aurora')
+})
