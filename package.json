@@ -1,0 +1,7 @@
+{
+  "name": "erp-dominio-stub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "node src/servidor.mjs", "test": "node --test test/*.test.mjs" }
+}
