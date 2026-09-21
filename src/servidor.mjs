@@ -13,8 +13,11 @@ export const DOMINIOS = {
   'gestao-acesso': { porta: 4010, criar: criarGestaoDeAcesso },
 }
 
+// `node src/servidor.mjs [nome...]` sobe só os domínios nomeados; sem nome, todos.
 if (import.meta.main) {
+  const pedidos = process.argv.slice(2)
   for (const [nome, { porta, criar }] of Object.entries(DOMINIOS)) {
+    if (pedidos.length && !pedidos.includes(nome)) continue
     criar().listen(porta, '127.0.0.1', () => console.log(`${nome} em http://127.0.0.1:${porta}`))
   }
 }
