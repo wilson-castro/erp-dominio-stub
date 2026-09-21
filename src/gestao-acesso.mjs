@@ -100,10 +100,13 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
     // Administração: quem não é administrador recebe 404, como se a rota não existisse.
     ['GET', /^\/v1\/catalogo$/, ({ res, usuario }) => {
       if (!ehAdmin(usuario)) return naoEncontrado(res)
+      const todos = [...perfisConhecidos(e)]
       const modulos = [...modulosConhecidos(e).values()].map((m) => ({
         id: m.id, zona: m.zona, rotulo: m.rotulo, prefixo: m.prefixo,
         restrito: e.restrito.get(m.id) ?? m.restritoPorPadrao,
         perfis: [...e.concessoes].filter(([, s]) => s.has(m.id)).map(([p]) => p).sort(),
+        // A regra D8 mora aqui; a tela só mostra o que o domínio diz que é possível.
+        perfisPossiveis: todos.filter((p) => concessaoValida(p, m.id)).sort(),
       }))
       const perfis = [
         ...PERFIS_DE_PLATAFORMA.map((p) => ({ ...p, zona: 'plataforma' })),

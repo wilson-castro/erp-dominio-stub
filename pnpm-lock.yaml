@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@erp/contratos':
-        specifier: 0.2.0
-        version: 0.2.0
+        specifier: 0.2.1
+        version: 0.2.1
 
 packages:
 
-  '@erp/contratos@0.2.0':
-    resolution: {integrity: sha512-lS0AsIQjBEoA/q/4D304eCwERGj0Tllvne6qUKkzDdqh8xReTJxwTz8ApMOrURlS0DMmvcStbvnSFD43uxUUDg==, tarball: http://localhost:4873/@erp/contratos/-/contratos-0.2.0.tgz}
+  '@erp/contratos@0.2.1':
+    resolution: {integrity: sha512-ty100oy1VqTdLb3IZfXzTjDvgwxAOjGyImjvsnQTgof6sUShiB2KQPVvy9qh+mj204FMkZUsVwxStgBww7OA0g==, tarball: http://localhost:4873/@erp/contratos/-/contratos-0.2.1.tgz}
 
 snapshots:
 
-  '@erp/contratos@0.2.0': {}
+  '@erp/contratos@0.2.1': {}

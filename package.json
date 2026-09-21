@@ -4,5 +4,5 @@
   "private": true,
   "type": "module",
   "scripts": { "dev": "node src/servidor.mjs", "test": "node --test test/*.test.mjs" },
-  "dependencies": { "@erp/contratos": "0.2.0" }
+  "dependencies": { "@erp/contratos": "0.2.1" }
 }

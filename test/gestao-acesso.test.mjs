@@ -93,6 +93,8 @@ test('catalogo mostra zonas, perfis federados e concessoes', async () => {
   assert.ok(cat.perfis.some((p) => p.id === 'zona1.analista' && p.zona === 'zona1'))
   const rel = cat.modulos.find((m) => m.id === 'zona1.relatorios')
   assert.deepEqual([rel.restrito, rel.perfis], [true, ['zona1.analista']])
+  assert.ok(!rel.perfisPossiveis.includes('zona2.operador'), 'D8 no catalogo')
+  assert.ok(rel.perfisPossiveis.includes('plataforma.usuario'))
 })
 
 test('reenviar o manifesto nao desfaz o que o administrador mudou', async () => {
@@ -100,4 +102,11 @@ test('reenviar o manifesto nao desfaz o que o administrador mudou', async () => 
   await fetch(`${b}/v1/concessoes`, post('carla', { perfil: 'zona1.analista', modulo: 'zona1.relatorios', conceder: false }))
   await fetch(`${b}/v1/manifestos`, post(null, MANIFESTOS.zona1, 'Bearer svc.zona1'))
   assert.ok(!(await permitidos(b, 'bruno')).includes('zona1.relatorios'))
+})
+
+test('manifesto que se diz plataforma e recusado: perfil global nao nasce de manifesto', async () => {
+  const b = await subir(criarGestaoDeAcesso())
+  const m = { zona: 'plataforma', modulos: [{ id: 'plataforma.x', rotulo: 'X', prefixo: '/plataforma', restritoPorPadrao: false }],
+              perfis: [{ id: 'plataforma.super', rotulo: 'Super' }], concessoes: {} }
+  assert.equal((await fetch(`${b}/v1/manifestos`, post(null, m, 'Bearer svc.plataforma'))).status, 422)
 })
