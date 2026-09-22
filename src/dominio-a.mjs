@@ -1,4 +1,5 @@
 import { criarDominio, json, naoEncontrado } from './base.mjs'
+import { criarArmazem } from './armazem.mjs'
 
 /**
  * Domínio A: recursos. Mostra as duas regras que um domínio aplica sozinho:
@@ -8,28 +9,24 @@ import { criarDominio, json, naoEncontrado } from './base.mjs'
  * Nenhum perfil de plataforma concede grupo aqui: ser administrador de acesso (carla) não
  * dá acesso a dado.
  */
-const GRUPOS = { bruno: ['FINANCEIRO'] }
-const RECURSOS = [
-  { id: 'r-1', nome: 'Recurso público 1', versao: 3, custo: { valor: 1200, centro: 'CC-10' } },
-  { id: 'r-2', nome: 'Recurso público 2', versao: 1, custo: { valor: 80, centro: 'CC-20' } },
-  { id: 'r-3', nome: 'Recurso do financeiro', versao: 7, escopo: 'FINANCEIRO', custo: { valor: 99000, centro: 'CC-99' } },
-]
-
-function projetar(r, usuario) {
-  const grupos = GRUPOS[usuario] ?? []
+function projetar(r, usuario, gruposPorUsuario) {
+  const grupos = gruposPorUsuario[usuario] ?? []
   if (r.escopo && !grupos.includes(r.escopo)) return null
   const p = { id: r.id, nome: r.nome, versao: r.versao }
   if (grupos.includes('FINANCEIRO')) p.custo = structuredClone(r.custo)
   return p
 }
 
-export const criarDominioA = () => criarDominio([
-  ['GET', /^\/v1\/recursos$/, ({ res, usuario }) =>
-    json(res, 200, RECURSOS.map((r) => projetar(r, usuario)).filter(Boolean))],
-  ['GET', /^\/v1\/recursos\/([^/]+)$/, ({ res, usuario, params: [id] }) => {
-    const r = RECURSOS.find((x) => x.id === id)
-    const p = r ? projetar(r, usuario) : null
-    if (!p) return naoEncontrado(res)
-    json(res, 200, p, { etag: `"${p.versao}"` })
-  }],
-])
+export function criarDominioA({ dir } = {}) {
+  const { dados: { grupos, recursos } } = criarArmazem('dominio-a', { dir })
+  return criarDominio([
+    ['GET', /^\/v1\/recursos$/, ({ res, usuario }) =>
+      json(res, 200, recursos.map((r) => projetar(r, usuario, grupos)).filter(Boolean))],
+    ['GET', /^\/v1\/recursos\/([^/]+)$/, ({ res, usuario, params: [id] }) => {
+      const r = recursos.find((x) => x.id === id)
+      const p = r ? projetar(r, usuario, grupos) : null
+      if (!p) return naoEncontrado(res)
+      json(res, 200, p, { etag: `"${p.versao}"` })
+    }],
+  ])
+}

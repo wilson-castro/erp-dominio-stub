@@ -1,16 +1,14 @@
 import { criarDominio, json, naoEncontrado, lerCorpo } from './base.mjs'
+import { criarArmazem } from './armazem.mjs'
 
 /**
  * Domínio C: tarefas, da zona 2. Tem a única mutação da base: concluir uma tarefa, com
  * `If-Match` obrigatório (invariante 6) e autorização decidida aqui (grupo OPERACAO).
  */
-const GRUPOS = { ana: ['OPERACAO'] }
-
-export function criarDominioC() {
-  const tarefas = new Map([
-    ['t-1', { id: 't-1', titulo: 'Revisar cadastro', concluida: false, versao: 1 }],
-    ['t-2', { id: 't-2', titulo: 'Conferir inventário', concluida: false, versao: 1 }],
-  ])
+export function criarDominioC({ dir } = {}) {
+  const armazem = criarArmazem('dominio-c', { dir })
+  const { grupos: GRUPOS, tarefas: lista } = armazem.dados
+  const tarefas = new Map(lista.map((t) => [t.id, t]))
   return criarDominio([
     ['GET', /^\/v1\/tarefas$/, ({ res }) => json(res, 200, [...tarefas.values()])],
     ['POST', /^\/v1\/tarefas\/([^/]+)\/concluir$/, async ({ req, res, usuario, params: [id] }) => {
@@ -23,6 +21,7 @@ export function criarDominioC() {
       if (ifMatch !== `"${t.versao}"`) return json(res, 409, { codigo: 'REGISTRO_DESATUALIZADO' })
       t.concluida = true
       t.versao += 1
+      armazem.salvar()
       json(res, 200, t, { etag: `"${t.versao}"` })
     }],
   ])

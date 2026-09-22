@@ -1,8 +1,15 @@
 {
   "name": "erp-dominio-stub",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "node src/servidor.mjs", "test": "node --test test/*.test.mjs" },
-  "dependencies": { "@erp/contratos": "0.2.1" }
+  "scripts": {
+    "dev": "node src/servidor.mjs",
+    "dev:persistente": "DADOS_DIR=dados/estado node src/servidor.mjs",
+    "resetar": "node src/armazem.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@erp/contratos": "0.2.1"
+  }
 }

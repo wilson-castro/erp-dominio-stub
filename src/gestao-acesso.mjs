@@ -1,5 +1,6 @@
 import { validarManifesto } from '@erp/contratos'
 import { criarDominio, json, naoEncontrado, lerCorpo } from './base.mjs'
+import { criarArmazem } from './armazem.mjs'
 
 /**
  * Domínio de gestão de acesso (N5, N6). Guarda:
@@ -17,21 +18,29 @@ export const PERFIS_DE_PLATAFORMA = [
 ]
 const PERFIL_ADMIN = 'plataforma.admin-acesso'
 
-export function criarEstadoDeAcesso() {
-  return {
-    manifestos: new Map(),
+/** Estado vindo de `dados/semente/gestao-acesso.json` (ou de `<dir>/gestao-acesso.json`). */
+export function criarEstadoDeAcesso({ dir } = {}) {
+  const armazem = criarArmazem('gestao-acesso', { dir })
+  const d = armazem.dados
+  const conjuntos = (o) => new Map(Object.entries(o).map(([k, v]) => [k, new Set(v)]))
+  const e = {
+    manifestos: new Map(Object.entries(d.manifestos)),
     /** perfil -> Set(modulo) */
-    concessoes: new Map([[PERFIL_ADMIN, new Set(['acesso.admin'])]]),
+    concessoes: conjuntos(d.concessoes),
     /** modulo -> boolean */
-    restrito: new Map(),
+    restrito: new Map(Object.entries(d.restrito)),
     /** usuario -> Set(perfil) */
-    atribuicoes: new Map([
-      ['ana', new Set(['plataforma.usuario', 'zona2.operador'])],
-      ['bruno', new Set(['plataforma.usuario', 'zona1.analista'])],
-      ['carla', new Set(['plataforma.usuario', PERFIL_ADMIN])],
-      ['davi', new Set()],
-    ]),
+    atribuicoes: conjuntos(d.atribuicoes),
+    salvar() {
+      const listas = (m) => Object.fromEntries([...m].map(([k, s]) => [k, [...s]]))
+      armazem.dados.manifestos = Object.fromEntries(e.manifestos)
+      armazem.dados.concessoes = listas(e.concessoes)
+      armazem.dados.restrito = Object.fromEntries(e.restrito)
+      armazem.dados.atribuicoes = listas(e.atribuicoes)
+      armazem.salvar()
+    },
   }
+  return e
 }
 
 const zonaDe = (id) => id.split('.')[0]
@@ -94,6 +103,7 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
       if (!servico) return json(res, 401, { codigo: 'SESSAO_EXPIRADA' })
       if (corpo?.zona !== servico) return json(res, 403, { codigo: 'OPERACAO_NAO_PERMITIDA' })
       try { registrarManifesto(e, corpo) } catch { return json(res, 422, { codigo: 'ERRO_INTERNO' }) }
+      e.salvar?.()
       json(res, 204, undefined)
     }],
 
@@ -127,6 +137,7 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
       const s = e.concessoes.get(perfil) ?? new Set()
       conceder ? s.add(modulo) : s.delete(modulo)
       e.concessoes.set(perfil, s)
+      e.salvar?.()
       json(res, 204, undefined)
     }],
 
@@ -139,6 +150,7 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
       // o módulo da própria administração não pode ficar livre: todo usuário viraria admin da tela
       if (c.modulo === 'acesso.admin' && !c.restrito) return json(res, 403, { codigo: 'OPERACAO_NAO_PERMITIDA' })
       e.restrito.set(c.modulo, c.restrito)
+      e.salvar?.()
       json(res, 204, undefined)
     }],
 
@@ -155,6 +167,7 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
       }
       const s = e.atribuicoes.get(alvo)
       atribuir ? s.add(perfil) : s.delete(perfil)
+      e.salvar?.()
       json(res, 204, undefined)
     }],
   ], { exigeUsuario: true })

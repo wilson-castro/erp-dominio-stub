@@ -1,0 +1,11 @@
+{
+  "manifestos": {},
+  "concessoes": { "plataforma.admin-acesso": ["acesso.admin"] },
+  "restrito": {},
+  "atribuicoes": {
+    "ana": ["plataforma.usuario", "zona2.operador"],
+    "bruno": ["plataforma.usuario", "zona1.analista"],
+    "carla": ["plataforma.usuario", "plataforma.admin-acesso"],
+    "davi": []
+  }
+}

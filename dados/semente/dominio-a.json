@@ -1,0 +1,8 @@
+{
+  "grupos": { "bruno": ["FINANCEIRO"] },
+  "recursos": [
+    { "id": "r-1", "nome": "Recurso público 1", "versao": 3, "custo": { "valor": 1200, "centro": "CC-10" } },
+    { "id": "r-2", "nome": "Recurso público 2", "versao": 1, "custo": { "valor": 80, "centro": "CC-20" } },
+    { "id": "r-3", "nome": "Recurso do financeiro", "versao": 7, "escopo": "FINANCEIRO", "custo": { "valor": 99000, "centro": "CC-99" } }
+  ]
+}

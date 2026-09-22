@@ -1,0 +1,7 @@
+{
+  "grupos": { "ana": ["OPERACAO"] },
+  "tarefas": [
+    { "id": "t-1", "titulo": "Revisar cadastro", "concluida": false, "versao": 1 },
+    { "id": "t-2", "titulo": "Conferir inventário", "concluida": false, "versao": 1 }
+  ]
+}
