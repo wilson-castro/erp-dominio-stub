@@ -9,7 +9,8 @@ escutam só em `127.0.0.1` e recusam requisição com cabeçalho de navegador (`
 | `dominio-b` | 4002 | segundo domínio da zona 1 |
 | `dominio-c` | 4003 | tarefas com versão (`If-Match`) |
 | `plataforma` | 4004 | avisos do shell |
-| `gestao-acesso` | 4010 | perfis, módulos, concessões, manifestos |
+| `gestao-acesso` | 4010 | perfis, módulos, concessões, manifestos (o que as apps usam hoje) |
+| `gestao-acesso-v2` | 4020 | **mock da API proposta** de gestão de acesso: unidades, pessoas, papéis com escopo, módulos direto/validado, validação, painel, auditoria. Contrato em `contratos/gestao-acesso-v2.openapi.yaml`; modelo em `docs/gestao-acesso/MODELO.md` do repositório principal. Pessoas próprias: `Bearer dev.<login>` com os logins de `dados/semente/gestao-acesso-v2.json` (ex.: `admin1`, `gnorte1`, `gmod1`, `auditor1`, `norte1`) |
 
 ```bash
 pnpm install

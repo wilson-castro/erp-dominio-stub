@@ -1,0 +1,547 @@
+{
+  "unidades": [
+    {
+      "id": "central",
+      "nome": "Unidade Central",
+      "categoria": "plataforma",
+      "pai": null,
+      "exclusiva": true,
+      "situacao": "ativa",
+      "convenio": null,
+      "versao": 1
+    },
+    {
+      "id": "norte",
+      "nome": "Unidade Norte",
+      "categoria": "parceira",
+      "pai": null,
+      "exclusiva": true,
+      "situacao": "ativa",
+      "convenio": {
+        "inicio": "2026-01-01",
+        "fim": "2027-12-31"
+      },
+      "versao": 1
+    },
+    {
+      "id": "sul",
+      "nome": "Unidade Sul",
+      "categoria": "parceira",
+      "pai": null,
+      "exclusiva": true,
+      "situacao": "ativa",
+      "convenio": {
+        "inicio": "2025-01-01",
+        "fim": "2026-06-30"
+      },
+      "versao": 1
+    },
+    {
+      "id": "leste",
+      "nome": "Unidade Leste",
+      "categoria": "parceira",
+      "pai": "central",
+      "exclusiva": true,
+      "situacao": "ativa",
+      "convenio": {
+        "inicio": "2026-03-01",
+        "fim": "2028-02-29"
+      },
+      "versao": 1
+    }
+  ],
+  "pessoas": [
+    {
+      "id": "p-01",
+      "login": "admin1",
+      "cpf": "52601815906",
+      "nome": "Adriana Administradora",
+      "unidade": "central",
+      "emailFuncional": "admin1@central.exemplo",
+      "status": "ativo",
+      "sub": "idp-admin1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "admin1@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-02",
+      "login": "admin2",
+      "cpf": "08301661305",
+      "nome": "Augusto Administrador",
+      "unidade": "central",
+      "emailFuncional": "admin2@central.exemplo",
+      "status": "ativo",
+      "sub": "idp-admin2",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "admin2@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-03",
+      "login": "auditor1",
+      "cpf": "18609139034",
+      "nome": "Aurora Auditora",
+      "unidade": "central",
+      "emailFuncional": "auditor1@central.exemplo",
+      "status": "ativo",
+      "sub": "idp-auditor1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "auditor1@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-04",
+      "login": "gmod1",
+      "cpf": "99603082430",
+      "nome": "Gustavo Gestor de Módulo",
+      "unidade": "central",
+      "emailFuncional": "gmod1@central.exemplo",
+      "status": "ativo",
+      "sub": "idp-gmod1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "gmod1@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-05",
+      "login": "gmod2",
+      "cpf": "62819482112",
+      "nome": "Giovana Gestora de Módulo",
+      "unidade": "central",
+      "emailFuncional": "gmod2@central.exemplo",
+      "status": "ativo",
+      "sub": "idp-gmod2",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "gmod2@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-06",
+      "login": "gmod3",
+      "cpf": "99351819019",
+      "nome": "Gabriel Gestor de Módulo",
+      "unidade": "central",
+      "emailFuncional": "gmod3@central.exemplo",
+      "status": "ativo",
+      "sub": "idp-gmod3",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "gmod3@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-07",
+      "login": "gnorte1",
+      "cpf": "93786579741",
+      "nome": "Nara Gestora Norte",
+      "unidade": "norte",
+      "emailFuncional": "gnorte1@norte.exemplo",
+      "status": "ativo",
+      "sub": "idp-gnorte1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "norte",
+          "email": "gnorte1@norte.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-08",
+      "login": "gnorte2",
+      "cpf": "54323194897",
+      "nome": "Nilo Gestor Norte",
+      "unidade": "norte",
+      "emailFuncional": "gnorte2@norte.exemplo",
+      "status": "ativo",
+      "sub": "idp-gnorte2",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "norte",
+          "email": "gnorte2@norte.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-09",
+      "login": "gsul1",
+      "cpf": "75749118606",
+      "nome": "Sara Gestora Sul",
+      "unidade": "sul",
+      "emailFuncional": "gsul1@sul.exemplo",
+      "status": "ativo",
+      "sub": "idp-gsul1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "sul",
+          "email": "gsul1@sul.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-10",
+      "login": "gsul2",
+      "cpf": "25276018987",
+      "nome": "Silas Gestor Sul",
+      "unidade": "sul",
+      "emailFuncional": "gsul2@sul.exemplo",
+      "status": "ativo",
+      "sub": "idp-gsul2",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "sul",
+          "email": "gsul2@sul.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-11",
+      "login": "gleste1",
+      "cpf": "55597971115",
+      "nome": "Lia Gestora Leste",
+      "unidade": "leste",
+      "emailFuncional": "gleste1@leste.exemplo",
+      "status": "ativo",
+      "sub": "idp-gleste1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "leste",
+          "email": "gleste1@leste.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-12",
+      "login": "norte1",
+      "cpf": "47104974601",
+      "nome": "Otávio Operador Norte",
+      "unidade": "norte",
+      "emailFuncional": "norte1@norte.exemplo",
+      "status": "ativo",
+      "sub": "idp-norte1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "norte",
+          "email": "norte1@norte.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-13",
+      "login": "norte2",
+      "cpf": "50752917080",
+      "nome": "Olga Operadora Norte",
+      "unidade": "norte",
+      "emailFuncional": "norte2@norte.exemplo",
+      "status": "ativo",
+      "sub": "idp-norte2",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "norte",
+          "email": "norte2@norte.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-14",
+      "login": "norte3",
+      "cpf": "34236671255",
+      "nome": "Omar Recém-cadastrado Norte",
+      "unidade": "norte",
+      "emailFuncional": "norte3@norte.exemplo",
+      "status": "cadastrado",
+      "sub": null,
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "norte",
+          "email": "norte3@norte.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-15",
+      "login": "sul1",
+      "cpf": "76842684650",
+      "nome": "Samuel Usuário Sul",
+      "unidade": "sul",
+      "emailFuncional": "sul1@sul.exemplo",
+      "status": "ativo",
+      "sub": "idp-sul1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "sul",
+          "email": "sul1@sul.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-16",
+      "login": "leste1",
+      "cpf": "56321223360",
+      "nome": "Lucas Inativo Leste",
+      "unidade": "leste",
+      "emailFuncional": "leste1@leste.exemplo",
+      "status": "inativo",
+      "sub": "idp-leste1",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "leste",
+          "email": "leste1@leste.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    }
+  ],
+  "atribuicoes": [
+    {
+      "id": "at-01",
+      "pessoa": "p-01",
+      "papel": "admin-geral",
+      "escopo": null
+    },
+    {
+      "id": "at-02",
+      "pessoa": "p-02",
+      "papel": "admin-geral",
+      "escopo": null
+    },
+    {
+      "id": "at-03",
+      "pessoa": "p-03",
+      "papel": "auditor-plataforma",
+      "escopo": null
+    },
+    {
+      "id": "at-04",
+      "pessoa": "p-04",
+      "papel": "gestor-modulo",
+      "escopo": "zona2"
+    },
+    {
+      "id": "at-05",
+      "pessoa": "p-05",
+      "papel": "gestor-modulo",
+      "escopo": "zona2"
+    },
+    {
+      "id": "at-06",
+      "pessoa": "p-06",
+      "papel": "gestor-modulo",
+      "escopo": "zona2"
+    },
+    {
+      "id": "at-07",
+      "pessoa": "p-07",
+      "papel": "gestor-unidade",
+      "escopo": "norte"
+    },
+    {
+      "id": "at-08",
+      "pessoa": "p-08",
+      "papel": "gestor-unidade",
+      "escopo": "norte"
+    },
+    {
+      "id": "at-09",
+      "pessoa": "p-09",
+      "papel": "gestor-unidade",
+      "escopo": "sul"
+    },
+    {
+      "id": "at-10",
+      "pessoa": "p-10",
+      "papel": "gestor-unidade",
+      "escopo": "sul"
+    },
+    {
+      "id": "at-11",
+      "pessoa": "p-11",
+      "papel": "gestor-unidade",
+      "escopo": "leste"
+    }
+  ],
+  "modulos": [
+    {
+      "id": "zona1",
+      "nome": "Zona 1 — painel e relatórios",
+      "categoria": "direto",
+      "perfilPadrao": "zona1.padrao",
+      "funcionalidades": [
+        "painel.ver",
+        "relatorios.ver"
+      ],
+      "perfis": [
+        {
+          "id": "zona1.padrao",
+          "funcionalidades": [
+            "painel.ver"
+          ]
+        },
+        {
+          "id": "zona1.analista",
+          "funcionalidades": [
+            "painel.ver",
+            "relatorios.ver"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "zona2",
+      "nome": "Zona 2 — tarefas",
+      "categoria": "validado",
+      "perfilPadrao": null,
+      "funcionalidades": [
+        "tarefas.ver",
+        "tarefas.concluir"
+      ],
+      "perfis": [
+        {
+          "id": "zona2.leitor",
+          "funcionalidades": [
+            "tarefas.ver"
+          ]
+        },
+        {
+          "id": "zona2.operador",
+          "funcionalidades": [
+            "tarefas.ver",
+            "tarefas.concluir"
+          ]
+        }
+      ]
+    }
+  ],
+  "acessos": [
+    {
+      "id": "ac-01",
+      "pessoa": "p-12",
+      "modulo": "zona1",
+      "situacao": "ativo",
+      "perfil": "zona1.padrao",
+      "solicitadoPor": "p-07",
+      "validadoPor": null,
+      "justificativa": null
+    },
+    {
+      "id": "ac-02",
+      "pessoa": "p-12",
+      "modulo": "zona2",
+      "situacao": "ativo",
+      "perfil": "zona2.operador",
+      "solicitadoPor": "p-07",
+      "validadoPor": "p-04",
+      "justificativa": null
+    },
+    {
+      "id": "ac-03",
+      "pessoa": "p-13",
+      "modulo": "zona2",
+      "situacao": "pendente",
+      "perfil": null,
+      "solicitadoPor": "p-08",
+      "validadoPor": null,
+      "justificativa": null
+    },
+    {
+      "id": "ac-04",
+      "pessoa": "p-15",
+      "modulo": "zona1",
+      "situacao": "ativo",
+      "perfil": "zona1.padrao",
+      "solicitadoPor": "p-09",
+      "validadoPor": null,
+      "justificativa": null
+    }
+  ],
+  "contatosSegundoFator": [
+    "admin1@central.exemplo",
+    "admin2@central.exemplo",
+    "auditor1@central.exemplo",
+    "gmod1@central.exemplo",
+    "gmod2@central.exemplo",
+    "gmod3@central.exemplo",
+    "gnorte1@norte.exemplo",
+    "gnorte2@norte.exemplo",
+    "gsul1@sul.exemplo",
+    "gsul2@sul.exemplo",
+    "gleste1@leste.exemplo",
+    "norte1@norte.exemplo",
+    "norte2@norte.exemplo",
+    "sul1@sul.exemplo",
+    "leste1@leste.exemplo"
+  ],
+  "confirmacoes": [
+    {
+      "unidade": "norte",
+      "em": "2026-08-01",
+      "por": "p-07"
+    }
+  ],
+  "eventos": [],
+  "sequencia": 100
+}

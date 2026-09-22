@@ -75,10 +75,12 @@ test('servidor: todo dominio sobe com DADOS_DIR e responde a rota de leitura', a
   const dir = pasta()
   const leitura = {
     'dominio-a': '/v1/recursos', 'dominio-b': '/v1/indicadores', 'dominio-c': '/v1/tarefas',
-    plataforma: '/v1/avisos', 'gestao-acesso': '/v1/modulos-permitidos',
+    plataforma: '/v1/avisos', 'gestao-acesso': '/v1/modulos-permitidos', 'gestao-acesso-v2': '/v2/eu',
   }
   for (const [nome, { criar }] of Object.entries(DOMINIOS)) {
     const url = await subir(criar({ dir }))
-    assert.equal((await fetch(`${url}${leitura[nome]}`, como('ana'))).status, 200, nome)
+    // a v2 tem as próprias pessoas (dados/semente/gestao-acesso-v2.json); os outros usam os atores de desenvolvimento
+    const auth = nome === 'gestao-acesso-v2' ? { headers: { authorization: 'Bearer dev.admin1' } } : como('ana')
+    assert.equal((await fetch(`${url}${leitura[nome]}`, auth)).status, 200, nome)
   }
 })

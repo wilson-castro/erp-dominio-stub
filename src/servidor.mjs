@@ -3,6 +3,7 @@ import { criarDominioB } from './dominio-b.mjs'
 import { criarDominioC } from './dominio-c.mjs'
 import { criarDominioPlataforma } from './dominio-plataforma.mjs'
 import { criarEstadoDeAcesso, criarGestaoDeAcesso } from './gestao-acesso.mjs'
+import { criarGestaoDeAcessoV2 } from './gestao-acesso-v2/servidor.mjs'
 
 /** Porta de cada domínio falso. Loopback apenas: domínio nunca fica exposto (invariante 10). */
 export const DOMINIOS = {
@@ -10,6 +11,8 @@ export const DOMINIOS = {
   'dominio-b': { porta: 4002, criar: criarDominioB },
   'dominio-c': { porta: 4003, criar: criarDominioC },
   plataforma: { porta: 4004, criar: criarDominioPlataforma },
+  // v2: mock da API proposta de gestão de acesso (contratos/gestao-acesso-v2.openapi.yaml)
+  'gestao-acesso-v2': { porta: 4020, criar: criarGestaoDeAcessoV2 },
   'gestao-acesso': { porta: 4010, criar: ({ dir } = {}) => criarGestaoDeAcesso(criarEstadoDeAcesso({ dir })) },
 }
 

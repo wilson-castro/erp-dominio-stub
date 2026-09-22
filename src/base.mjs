@@ -39,8 +39,9 @@ export function lerCorpo(req) {
 /**
  * Cada rota: `[metodo, /regex/, handler(ctx)]`. `ctx` traz `usuario`, `servico`, `params`,
  * `req`, `res`. O domínio recusa sozinho o que vem do navegador e o que vem sem credencial.
+ * `identificar(authorization)` devolve o usuário do token; o padrão aceita os atores de desenvolvimento.
  */
-export function criarDominio(rotas, { exigeUsuario = true } = {}) {
+export function criarDominio(rotas, { exigeUsuario = true, identificar = usuarioDoToken } = {}) {
   return createServer(async (req, res) => {
     // O domínio não é alcançável a partir do navegador (invariante 10). Para loopback o
     // navegador sempre manda Sec-Fetch-Site e Sec-Fetch-Dest, e Origin em fetch
@@ -48,7 +49,7 @@ export function criarDominio(rotas, { exigeUsuario = true } = {}) {
     if (req.headers.origin || req.headers['sec-fetch-site'] || req.headers['sec-fetch-dest']) {
       return json(res, 403, { codigo: 'OPERACAO_NAO_PERMITIDA' })
     }
-    const usuario = usuarioDoToken(req.headers.authorization)
+    const usuario = identificar(req.headers.authorization)
     const servico = servicoDoToken(req.headers.authorization)
     if (exigeUsuario && !usuario && !servico) return json(res, 401, { codigo: 'SESSAO_EXPIRADA' })
 

@@ -1,0 +1,283 @@
+openapi: 3.1.0
+info:
+  title: Gestão de acesso v2 (modelo de referência da base)
+  version: 0.1.0
+  description: |
+    API proposta para a gestão de acesso da base BFF + Multi-Zones. Implementada como mock em
+    `src/gestao-acesso-v2/` (porta 4020, dados em `dados/semente/gestao-acesso-v2.json`).
+    Modelo e decisões de desenho: `docs/gestao-acesso/MODELO.md` no repositório principal.
+
+    Regras gerais:
+    - quem chama se identifica por token (`Bearer`): pessoa (no mock, `dev.<login>`) ou serviço
+      (`svc.<aplicacao>`: `idp` para o provedor de identidade, o id do módulo para o manifesto, BFFs);
+    - 401 sem credencial; **404** para o que está fora do escopo de quem pergunta (não revela que
+      existe); **403** para ação negada sobre o que ele legitimamente vê;
+    - PATCH de recurso versionado exige `If-Match` com a versão conhecida (428 sem, 409 divergente);
+    - erro é sempre `{ codigo }`; pedido com cabeçalho de navegador (`Origin`, `Sec-Fetch-*`) é recusado (403).
+servers:
+  - url: http://127.0.0.1:4020
+security:
+  - token: []
+
+paths:
+  /v2/eu:
+    get:
+      summary: A própria pessoa, seus papéis e os módulos a que tem acesso efetivo
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Eu' } } } }
+        '401': { $ref: '#/components/responses/Erro' }
+
+  /v2/primeiro-acesso:
+    post:
+      summary: (provedor de identidade) Casar o CPF verificado com um pré-cadastro
+      description: Sem pré-cadastro ativo, ou com identificador já vinculado a outro, a resposta é sempre a mesma (não revela se o CPF existe) e a tentativa vira evento de auditoria.
+      requestBody: { content: { application/json: { schema: { type: object, required: [cpf, sub], properties: { cpf: { type: string }, sub: { type: string } } } } } }
+      responses:
+        '200': { description: vinculado, content: { application/json: { schema: { type: object, properties: { pessoa: { type: string }, login: { type: string } } } } } }
+        '403': { $ref: '#/components/responses/Erro' }
+
+  /v2/decisoes:
+    post:
+      summary: (serviço) A pessoa pode usar esta funcionalidade deste módulo agora?
+      description: Interseção de condições; basta uma falhar para negar. Papel administrativo não concede acesso a módulo.
+      requestBody: { content: { application/json: { schema: { type: object, required: [modulo], properties: { pessoa: { type: string }, sub: { type: string }, modulo: { type: string }, funcionalidade: { type: string } } } } } }
+      responses:
+        '200': { description: decisão, content: { application/json: { schema: { $ref: '#/components/schemas/Decisao' } } } }
+
+  /v2/eventos:
+    get:
+      summary: (serviço) Eventos de revogação para encerrar sessões (desligamento, suspensão, acesso revogado)
+      parameters: [ { name: desde, in: query, schema: { type: integer } } ]
+      responses:
+        '200': { description: eventos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Evento' } } } } }
+
+  /v2/modulos/manifesto:
+    post:
+      summary: (serviço do próprio módulo) Declarar as funcionalidades do módulo
+      description: Só o módulo declara as próprias funcionalidades. Módulo novo nasce com categoria `validado`.
+      requestBody: { content: { application/json: { schema: { type: object, required: [id, funcionalidades], properties: { id: { type: string }, nome: { type: string }, funcionalidades: { type: array, items: { type: string, pattern: '^[a-z0-9-]+\.[a-z0-9-]+$' } } } } } } }
+      responses:
+        '200': { description: módulo, content: { application/json: { schema: { $ref: '#/components/schemas/Modulo' } } } }
+
+  /v2/modulos:
+    get:
+      summary: Catálogo de módulos, funcionalidades e perfis
+      responses:
+        '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Modulo' } } } } }
+  /v2/modulos/{id}/categoria:
+    patch:
+      summary: (administrador geral) Mudar a categoria do módulo, com justificativa
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [categoria, justificativa], properties: { categoria: { enum: [direto, validado] }, justificativa: { type: string } } } } } }
+      responses: { '200': { description: ok }, '404': { $ref: '#/components/responses/Erro' }, '422': { $ref: '#/components/responses/Erro' } }
+  /v2/modulos/{id}/perfis:
+    post:
+      summary: (administrador geral) Criar perfil do módulo a partir das funcionalidades declaradas
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/PerfilDeModulo' } } } }
+      responses: { '201': { description: criado }, '409': { $ref: '#/components/responses/Erro' }, '422': { $ref: '#/components/responses/Erro' } }
+
+  /v2/unidades:
+    get:
+      summary: Unidades visíveis (administrador geral, todas; gestor, as que gere)
+      responses: { '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Unidade' } } } } } }
+    post:
+      summary: (administrador geral) Criar unidade; nasce de gestão exclusiva
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Unidade' } } } }
+      responses: { '201': { description: criada }, '409': { $ref: '#/components/responses/Erro' } }
+  /v2/unidades/{id}:
+    patch:
+      summary: (administrador geral) Alterar nome, convênio ou situação
+      parameters: [ { $ref: '#/components/parameters/id' }, { $ref: '#/components/parameters/ifMatch' } ]
+      responses: { '200': { description: ok }, '409': { $ref: '#/components/responses/Erro' }, '428': { $ref: '#/components/responses/Erro' } }
+  /v2/unidades/{id}/painel:
+    get:
+      summary: Situação de primeiro acesso e pendências da unidade
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Painel' } } } } }
+  /v2/unidades/{id}/confirmacoes:
+    post:
+      summary: (gestor da unidade) Confirmação periódica; quem não for confirmado fica suspenso
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [confirmadas], properties: { confirmadas: { type: array, items: { type: string } } } } } } }
+      responses: { '200': { description: pessoas suspensas } }
+
+  /v2/pessoas/verificacao:
+    post:
+      summary: (gestor ou administrador) CPF ou e-mail funcional já cadastrado? Única consulta fora da própria unidade
+      requestBody: { content: { application/json: { schema: { type: object, properties: { cpf: { type: string }, emailFuncional: { type: string } } } } } }
+      responses: { '200': { description: ok, content: { application/json: { schema: { type: object, properties: { existe: { type: boolean } } } } } } }
+  /v2/pessoas:
+    get:
+      summary: Pessoas de uma unidade (sem busca geral; `unidade` é obrigatório)
+      parameters: [ { name: unidade, in: query, required: true, schema: { type: string } } ]
+      responses: { '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Pessoa' } } } } }, '404': { $ref: '#/components/responses/Erro' } }
+    post:
+      summary: (gestor da unidade ou administrador) Pré-cadastro; CPF único; módulos solicitados
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/PreCadastro' } } } }
+      responses:
+        '201': { description: cadastrado, content: { application/json: { schema: { $ref: '#/components/schemas/Pessoa' } } } }
+        '409': { description: JA_POSSUI_CONTA }
+        '422': { description: CPF_INVALIDO, CAMPOS_OBRIGATORIOS ou MODULO_DESCONHECIDO }
+  /v2/pessoas/{id}:
+    get:
+      summary: Uma pessoa (ela mesma, gestor da unidade, administrador, auditor da plataforma)
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '200': { description: ok }, '404': { $ref: '#/components/responses/Erro' } }
+    patch:
+      summary: Alterar nome ou e-mail funcional (a troca de e-mail fecha o registro anterior no histórico); CPF é imutável
+      parameters: [ { $ref: '#/components/parameters/id' }, { $ref: '#/components/parameters/ifMatch' } ]
+      responses: { '200': { description: ok }, '409': { $ref: '#/components/responses/Erro' }, '428': { $ref: '#/components/responses/Erro' } }
+  /v2/pessoas/{id}/historico:
+    get:
+      summary: Unidades e e-mails anteriores, com datas
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '200': { description: ok } }
+  /v2/pessoas/{id}/transferencia:
+    post:
+      summary: (administrador geral) Mudar de unidade; os acessos anteriores são cancelados, não transferidos
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '200': { description: ok } }
+  /v2/pessoas/{id}/desligamento:
+    post:
+      summary: Desligar; revoga acessos e papéis e publica evento para encerrar as sessões
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '204': { description: desligado } }
+  /v2/pessoas/{id}/atribuicoes:
+    get:
+      summary: Papéis da pessoa
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '200': { description: ok } }
+    post:
+      summary: (administrador geral) Atribuir papel com escopo
+      description: Recusa auto-atribuição, acúmulo de administração com auditoria e escopo inválido.
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/Atribuicao' } } } }
+      responses: { '201': { description: atribuído }, '403': { description: SEM_PERMISSAO ou AUTOATRIBUICAO }, '422': { description: SEGREGACAO_DE_FUNCOES, ESCOPO_INVALIDO } }
+  /v2/atribuicoes/{id}/retirada:
+    post:
+      summary: (administrador geral) Retirar papel; ninguém retira o próprio
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '204': { description: retirado } }
+
+  /v2/acessos:
+    get:
+      summary: Acessos visíveis a quem pergunta (filtros `modulo`, `situacao`)
+      responses: { '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Acesso' } } } } } }
+    post:
+      summary: (gestor da unidade) Conceder (módulo direto) ou solicitar (módulo validado) acesso
+      requestBody: { content: { application/json: { schema: { type: object, required: [pessoa, modulo], properties: { pessoa: { type: string }, modulo: { type: string } } } } } }
+      responses: { '201': { description: ativo ou pendente } }
+  /v2/acessos/{id}/decisao:
+    post:
+      summary: (gestor do módulo) Validar pessoa a pessoa; quem solicitou não valida, ninguém valida o próprio; recusa exige justificativa
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [aprovar], properties: { aprovar: { type: boolean }, perfil: { type: string }, justificativa: { type: string } } } } } }
+      responses: { '200': { description: decidido }, '403': { description: SEGREGACAO_DE_FUNCOES }, '409': { description: NAO_ESTA_PENDENTE } }
+  /v2/acessos/{id}/revogacao:
+    post:
+      summary: (gestor da unidade da pessoa ou do módulo) Revogar
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses: { '204': { description: revogado } }
+
+  /v2/auditoria:
+    get:
+      summary: (auditor) Eventos, somente leitura; auditor de módulo vê só os do módulo
+      parameters: [ { name: desde, in: query, schema: { type: integer } } ]
+      responses: { '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Evento' } } } } } }
+
+components:
+  securitySchemes:
+    token: { type: http, scheme: bearer }
+  parameters:
+    id: { name: id, in: path, required: true, schema: { type: string } }
+    ifMatch: { name: If-Match, in: header, required: true, schema: { type: string }, description: 'versão conhecida, ex.: "1"' }
+  responses:
+    Erro: { description: erro, content: { application/json: { schema: { $ref: '#/components/schemas/Erro' } } } }
+  schemas:
+    Erro: { type: object, required: [codigo], properties: { codigo: { type: string } } }
+    Unidade:
+      type: object
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        categoria: { enum: [plataforma, parceira] }
+        pai: { type: [string, 'null'], description: estrutura apenas; não dá alcance de gestão }
+        exclusiva: { type: boolean, description: sempre true na criação }
+        situacao: { enum: [ativa, inativa] }
+        convenio: { type: [object, 'null'], properties: { inicio: { type: string, format: date }, fim: { type: string, format: date } }, description: fora da vigência, os acessos da unidade deixam de valer }
+        versao: { type: integer }
+    Pessoa:
+      type: object
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        cpf: { type: string }
+        unidade: { type: string }
+        emailFuncional: { type: string }
+        status: { enum: [cadastrado, ativo, suspenso, inativo, desligado] }
+        contatoIntegroComSegundoFator: { type: boolean, description: o e-mail funcional é o mesmo cadastrado no provedor de segundo fator }
+    PreCadastro:
+      type: object
+      required: [cpf, nome, unidade, emailFuncional]
+      properties:
+        cpf: { type: string }
+        nome: { type: string }
+        unidade: { type: string }
+        emailFuncional: { type: string }
+        modulosSolicitados: { type: array, items: { type: string } }
+    Atribuicao:
+      type: object
+      required: [papel]
+      properties:
+        papel: { enum: [admin-geral, gestor-unidade, gestor-modulo, auditor-plataforma, auditor-modulo] }
+        escopo: { type: [string, 'null'], description: 'unidade (gestor-unidade), módulo (gestor-modulo, auditor-modulo) ou null' }
+    Modulo:
+      type: object
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        categoria: { enum: [direto, validado] }
+        funcionalidades: { type: array, items: { type: string } }
+        perfis: { type: array, items: { $ref: '#/components/schemas/PerfilDeModulo' } }
+    PerfilDeModulo: { type: object, required: [id, funcionalidades], properties: { id: { type: string }, funcionalidades: { type: array, items: { type: string } } } }
+    Acesso:
+      type: object
+      properties:
+        id: { type: string }
+        pessoa: { type: string }
+        modulo: { type: string }
+        situacao: { enum: [pendente, ativo, recusado, revogado] }
+        perfil: { type: [string, 'null'] }
+        solicitadoPor: { type: string }
+        validadoPor: { type: [string, 'null'] }
+        justificativa: { type: [string, 'null'] }
+    Decisao:
+      type: object
+      properties:
+        permitido: { type: boolean }
+        motivo: { enum: [null, PESSOA_INATIVA, UNIDADE_SEM_VIGENCIA, MODULO_DESCONHECIDO, SEM_ACESSO_AO_MODULO, FUNCIONALIDADE_FORA_DO_PERFIL] }
+        funcionalidades: { type: array, items: { type: string } }
+    Eu:
+      type: object
+      properties:
+        pessoa: { $ref: '#/components/schemas/Pessoa' }
+        papeis: { type: array, items: { $ref: '#/components/schemas/Atribuicao' } }
+        modulos: { type: array, items: { type: object, properties: { id: { type: string }, funcionalidades: { type: array, items: { type: string } } } } }
+    Painel:
+      type: object
+      properties:
+        unidade: { type: string }
+        porStatus: { type: object, additionalProperties: { type: integer } }
+        gestores: { type: integer }
+        pendencias: { type: array, items: { type: object, properties: { tipo: { enum: [GESTORES_INSUFICIENTES, SEM_PRIMEIRO_ACESSO, CONTATO_DIVERGENTE_DO_SEGUNDO_FATOR] }, pessoa: { type: string }, detalhe: { type: string } } } }
+        ultimaConfirmacao: { type: [string, 'null'], format: date }
+    Evento:
+      type: object
+      properties:
+        seq: { type: integer }
+        em: { type: string, format: date-time }
+        tipo: { type: string }
+        autor: { type: [string, 'null'] }
+        alvo: { type: [string, 'null'] }
+        excecao: { type: boolean, description: administrador geral agindo sobre unidade parceira }
