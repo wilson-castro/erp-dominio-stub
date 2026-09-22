@@ -19,6 +19,12 @@ pnpm dev:persistente     # idem, gravando o estado em dados/estado/ (showcase)
 pnpm resetar             # apaga dados/estado/: na próxima subida tudo volta à semente
 ```
 
+## Responsabilidades
+
+O que esta parte faz, o que nunca faz e o vocabulário usado aqui (BFF, zona, Server Action…), explicados
+do zero: [`docs/RESPONSABILIDADES.md`](https://github.com/ArtroxGabriel/nextjs-mfe/blob/bff-multizone/docs/RESPONSABILIDADES.md)
+no repositório principal, seção 6.
+
 ## Dados
 
 Cada domínio lê os próprios dados de `dados/semente/<dominio>.json` (atores, grupos, recursos,
