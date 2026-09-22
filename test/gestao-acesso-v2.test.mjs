@@ -130,3 +130,30 @@ test('segregacao na validacao: quem solicitou nao valida, e ninguem valida o pro
   assert.equal((await pedir('gmod3', `/v2/acessos/${meu.id}/decisao`, { aprovar: true, perfil: 'zona2.operador' })).status, 403)
   assert.equal((await pedir('gmod2', `/v2/acessos/${meu.id}/decisao`, { aprovar: true, perfil: 'zona2.operador' })).status, 200)
 })
+
+// --- atores da base (ADR-0014, adendo 1): os mesmos do realm, do identidadeDev e do gate ---------
+const UUID = '0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d'
+const eu = async (login) => (await fetch(`${url}/v2/eu`, { headers: { authorization: `Bearer dev.${login}.${UUID}` } })).json()
+
+test('o token de desenvolvimento do shell (dev.<login>.<uuid>) identifica a pessoa', async () => {
+  assert.equal((await fetch(`${url}/v2/eu`, { headers: { authorization: `Bearer dev.ana.${UUID}` } })).status, 200)
+  for (const t of ['dev.intruso', `dev.intruso.${UUID}`, 'dev.ana.nao-e-uuid', `dev.ana.${UUID}.x`]) {
+    assert.equal((await fetch(`${url}/v2/eu`, { headers: { authorization: `Bearer ${t}` } })).status, 401, t)
+  }
+})
+
+test('ana, bruno, carla e davi: acesso efetivo igual ao da v1, com o nome do modulo para o menu', async () => {
+  const resumo = async (login) => {
+    const e = await eu(login)
+    return { modulos: Object.fromEntries(e.modulos.map((m) => [m.id, m.funcionalidades])), papeis: e.papeis.map((p) => p.papel), nomes: e.modulos.map((m) => m.nome) }
+  }
+  assert.deepEqual(await resumo('ana'), { modulos: { zona1: ['painel.ver'], zona2: ['tarefas.ver', 'tarefas.concluir'] }, papeis: [], nomes: ['Zona 1 — painel e relatórios', 'Zona 2 — tarefas'] })
+  assert.deepEqual((await resumo('bruno')).modulos, { zona1: ['painel.ver', 'relatorios.ver'] })
+  // segregação: carla administra, mas o papel não lhe dá módulo algum além do que tem por acesso
+  assert.deepEqual(await resumo('carla'), { modulos: { zona1: ['painel.ver'] }, papeis: ['admin-geral'], nomes: ['Zona 1 — painel e relatórios'] })
+  assert.deepEqual(await resumo('davi'), { modulos: { zona1: ['painel.ver'] }, papeis: [], nomes: ['Zona 1 — painel e relatórios'] })
+})
+
+test('os atores da base ficam na unidade central, sem convenio: o gate nao depende da data', async () => {
+  for (const login of ['ana', 'bruno', 'carla', 'davi']) assert.equal((await eu(login)).pessoa.unidade, 'central')
+})

@@ -354,6 +354,82 @@
           "fim": null
         }
       ]
+    },
+    {
+      "id": "p-17",
+      "login": "ana",
+      "cpf": "11144477735",
+      "nome": "Ana Operadora",
+      "unidade": "central",
+      "emailFuncional": "ana@central.exemplo",
+      "status": "ativo",
+      "sub": "00000000-0000-4000-8000-00000000a001",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "ana@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-18",
+      "login": "bruno",
+      "cpf": "22255588846",
+      "nome": "Bruno Analista",
+      "unidade": "central",
+      "emailFuncional": "bruno@central.exemplo",
+      "status": "ativo",
+      "sub": "00000000-0000-4000-8000-00000000a002",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "bruno@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-19",
+      "login": "carla",
+      "cpf": "33366699957",
+      "nome": "Carla Administradora de Acesso",
+      "unidade": "central",
+      "emailFuncional": "carla@central.exemplo",
+      "status": "ativo",
+      "sub": "00000000-0000-4000-8000-00000000a003",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "carla@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
+    },
+    {
+      "id": "p-20",
+      "login": "davi",
+      "cpf": "44477700083",
+      "nome": "Davi Sem Perfil",
+      "unidade": "central",
+      "emailFuncional": "davi@central.exemplo",
+      "status": "ativo",
+      "sub": "00000000-0000-4000-8000-00000000a004",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "davi@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
     }
   ],
   "atribuicoes": [
@@ -422,6 +498,12 @@
       "pessoa": "p-11",
       "papel": "gestor-unidade",
       "escopo": "leste"
+    },
+    {
+      "id": "at-12",
+      "pessoa": "p-19",
+      "papel": "admin-geral",
+      "escopo": null
     }
   ],
   "modulos": [
@@ -516,6 +598,56 @@
       "solicitadoPor": "p-09",
       "validadoPor": null,
       "justificativa": null
+    },
+    {
+      "id": "ac-05",
+      "pessoa": "p-17",
+      "modulo": "zona1",
+      "situacao": "ativo",
+      "perfil": "zona1.padrao",
+      "solicitadoPor": "p-01",
+      "validadoPor": null,
+      "justificativa": null
+    },
+    {
+      "id": "ac-06",
+      "pessoa": "p-17",
+      "modulo": "zona2",
+      "situacao": "ativo",
+      "perfil": "zona2.operador",
+      "solicitadoPor": "p-01",
+      "validadoPor": "p-04",
+      "justificativa": null
+    },
+    {
+      "id": "ac-07",
+      "pessoa": "p-18",
+      "modulo": "zona1",
+      "situacao": "ativo",
+      "perfil": "zona1.analista",
+      "solicitadoPor": "p-01",
+      "validadoPor": null,
+      "justificativa": null
+    },
+    {
+      "id": "ac-08",
+      "pessoa": "p-19",
+      "modulo": "zona1",
+      "situacao": "ativo",
+      "perfil": "zona1.padrao",
+      "solicitadoPor": "p-01",
+      "validadoPor": null,
+      "justificativa": null
+    },
+    {
+      "id": "ac-09",
+      "pessoa": "p-20",
+      "modulo": "zona1",
+      "situacao": "ativo",
+      "perfil": "zona1.padrao",
+      "solicitadoPor": "p-01",
+      "validadoPor": null,
+      "justificativa": null
     }
   ],
   "contatosSegundoFator": [
@@ -533,7 +665,11 @@
     "norte1@norte.exemplo",
     "norte2@norte.exemplo",
     "sul1@sul.exemplo",
-    "leste1@leste.exemplo"
+    "leste1@leste.exemplo",
+    "ana@central.exemplo",
+    "bruno@central.exemplo",
+    "carla@central.exemplo",
+    "davi@central.exemplo"
   ],
   "confirmacoes": [
     {

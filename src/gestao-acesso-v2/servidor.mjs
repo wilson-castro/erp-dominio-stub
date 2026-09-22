@@ -8,7 +8,7 @@ import {
 /**
  * Gestão de acesso v2 — mock da API proposta para a gestão de acesso da base (porta 4020).
  * Contrato: contratos/gestao-acesso-v2.openapi.yaml. Dados: dados/semente/gestao-acesso-v2.json.
- * Quem chama se identifica por `Bearer dev.<login>` (pessoa da semente) ou `Bearer svc.<aplicacao>`
+ * Quem chama se identifica por `Bearer dev.<login>[.<uuid>]` (pessoa da semente) ou `Bearer svc.<aplicacao>`
  * (provedor de identidade `idp`, módulos, BFFs). É mock: o login real é do provedor de identidade.
  *
  * Respostas seguem as regras da base: 401 sem credencial, 404 para o que está fora do escopo de quem
@@ -20,7 +20,8 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
   const e = armazem.dados
   const pessoaDoLogin = (login) => e.pessoas.find((p) => p.login === login && p.status !== 'desligado')
   const identificar = (auth) => {
-    const m = /^Bearer dev\.([a-z0-9.]+)$/.exec(auth ?? '')
+    // `dev.<login>` ou o token de desenvolvimento do shell, `dev.<login>.<uuid>`
+    const m = /^Bearer dev\.([a-z0-9]+)(?:\.[0-9a-f-]{36})?$/.exec(auth ?? '')
     return m ? pessoaDoLogin(m[1])?.id ?? null : null
   }
   const novoId = (prefixo) => `${prefixo}-${++e.sequencia}`
@@ -79,7 +80,7 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
       if (!usuario) return erro(res, 401, 'SESSAO_EXPIRADA')
       const p = pessoa(usuario)
       const modulos = e.modulos.map((m) => ({ id: m.id, ...acessoEfetivo(e, { pessoa: p.id, modulo: m.id }, agora) }))
-        .filter((m) => m.permitido).map(({ id, funcionalidades }) => ({ id, funcionalidades }))
+        .filter((m) => m.permitido).map(({ id, funcionalidades }) => ({ id, nome: modulo(id).nome, funcionalidades }))
       json(res, 200, { pessoa: vistaDaPessoa(p), papeis: papeisDe(e, p.id).map(({ papel, escopo }) => ({ papel, escopo })), modulos })
     }],
 
