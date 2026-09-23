@@ -157,3 +157,13 @@ test('ana, bruno, carla e davi: acesso efetivo igual ao da v1, com o nome do mod
 test('os atores da base ficam na unidade central, sem convenio: o gate nao depende da data', async () => {
   for (const login of ['ana', 'bruno', 'carla', 'davi']) assert.equal((await eu(login)).pessoa.unidade, 'central')
 })
+
+test('G02/G05 (auditor_b1_d1_3): o token de desenvolvimento e ancorado; /v2/eu sem pessoa e 401', async () => {
+  for (const auth of ['xBearer dev.admin1', 'Token Bearer dev.admin1', 'Bearer dev.admin1.nao-e-uuid', 'Bearer dev.admin1 extra']) {
+    assert.equal((await fetch(`${url}/v2/eu`, { headers: { authorization: auth } })).status, 401, auth)
+  }
+  // credencial de servico e pessoa inexistente nao sao "alguem" para /v2/eu
+  for (const auth of ['Bearer svc.zona2', 'Bearer dev.ninguem']) {
+    assert.equal((await fetch(`${url}/v2/eu`, { headers: { authorization: auth } })).status, 401, auth)
+  }
+})
