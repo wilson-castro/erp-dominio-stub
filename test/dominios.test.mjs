@@ -48,11 +48,12 @@ test('concluir tarefa exige grupo, If-Match e versao atual', async () => {
   const url = `${c}/v1/tarefas/t-1/concluir`
   assert.equal((await fetch(url, post('bruno', {}))).status, 403, 'sem grupo OPERACAO')
   assert.equal((await fetch(url, post('ana', {}))).status, 428, 'sem If-Match')
-  const velho = post('ana', {}); velho.headers['if-match'] = '"0"'
+  // t-1 esta na versao 3 na semente (auditor_b1_d1_3, P16): um If-Match fixo em "1" nao passa
+  const velho = post('ana', {}); velho.headers['if-match'] = '"1"'
   assert.equal((await fetch(url, velho)).status, 409, 'versao desatualizada')
-  const certo = post('ana', {}); certo.headers['if-match'] = '"1"'
+  const certo = post('ana', {}); certo.headers['if-match'] = '"3"'
   const r = await fetch(url, certo)
   assert.equal(r.status, 200)
-  assert.equal(r.headers.get('etag'), '"2"')
+  assert.equal(r.headers.get('etag'), '"4"')
   assert.equal((await r.json()).concluida, true)
 })

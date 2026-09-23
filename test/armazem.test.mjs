@@ -53,11 +53,11 @@ test('dominio C com pasta: tarefa concluida continua concluida depois de reinici
   const dir = pasta()
   const s1 = await subir(criarDominioC({ dir }))
   const req = post('ana', {})
-  req.headers['if-match'] = '"1"'
+  req.headers['if-match'] = '"3"'   // versao da semente
   assert.equal((await fetch(`${s1}/v1/tarefas/t-1/concluir`, req)).status, 200)
   const s2 = await subir(criarDominioC({ dir }))
   const lista = await (await fetch(`${s2}/v1/tarefas`, como('ana'))).json()
-  assert.deepEqual(lista.find((t) => t.id === 't-1'), { id: 't-1', titulo: 'Revisar cadastro', concluida: true, versao: 2 })
+  assert.deepEqual(lista.find((t) => t.id === 't-1'), { id: 't-1', titulo: 'Revisar cadastro', concluida: true, versao: 4 })
 })
 
 test('gestao de acesso com pasta: atribuicao feita pelo admin sobrevive a reiniciar', async () => {
