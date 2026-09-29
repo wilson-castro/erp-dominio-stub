@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
  * Atores de desenvolvimento. O token de dev tem a forma `dev.<usuario>.<uuid>`; um IdP
  * real traria claims. Os GRUPOS de cada domínio ficam no próprio domínio, não aqui.
  */
-export const USUARIOS = ['ana', 'bruno', 'carla', 'davi']
+export const USUARIOS = ['ana', 'bruno', 'carla', 'davi', 'eva']
 
 export function usuarioDoToken(auth) {
   if (!auth?.startsWith('Bearer ')) return null

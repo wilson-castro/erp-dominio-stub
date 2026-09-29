@@ -152,10 +152,11 @@ test('ana, bruno, carla e davi: acesso efetivo igual ao da v1, com o nome do mod
   // segregação: carla administra, mas o papel não lhe dá módulo algum além do que tem por acesso
   assert.deepEqual(await resumo('carla'), { modulos: { zona1: ['painel.ver'] }, papeis: ['admin-geral'], nomes: ['Zona 1 — painel e relatórios'] })
   assert.deepEqual(await resumo('davi'), { modulos: { zona1: ['painel.ver'] }, papeis: [], nomes: ['Zona 1 — painel e relatórios'] })
+  assert.deepEqual(await resumo('eva'), { modulos: { zona2: ['tarefas.ver'] }, papeis: [], nomes: ['Zona 2 — tarefas'] })
 })
 
 test('os atores da base ficam na unidade central, sem convenio: o gate nao depende da data', async () => {
-  for (const login of ['ana', 'bruno', 'carla', 'davi']) assert.equal((await eu(login)).pessoa.unidade, 'central')
+  for (const login of ['ana', 'bruno', 'carla', 'davi', 'eva']) assert.equal((await eu(login)).pessoa.unidade, 'central')
 })
 
 test('G02/G05 (auditor_b1_d1_3): o token de desenvolvimento e ancorado; /v2/eu sem pessoa e 401', async () => {

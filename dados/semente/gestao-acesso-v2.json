@@ -430,6 +430,25 @@
           "fim": null
         }
       ]
+    },
+    {
+      "id": "p-21",
+      "login": "eva",
+      "cpf": "55588811194",
+      "nome": "Eva Apenas Leitora",
+      "unidade": "central",
+      "emailFuncional": "eva@central.exemplo",
+      "status": "ativo",
+      "sub": "00000000-0000-4000-8000-00000000a005",
+      "versao": 1,
+      "historico": [
+        {
+          "unidade": "central",
+          "email": "eva@central.exemplo",
+          "inicio": "2026-01-10",
+          "fim": null
+        }
+      ]
     }
   ],
   "atribuicoes": [
@@ -648,6 +667,16 @@
       "solicitadoPor": "p-01",
       "validadoPor": null,
       "justificativa": null
+    },
+    {
+      "id": "ac-10",
+      "pessoa": "p-21",
+      "modulo": "zona2",
+      "situacao": "ativo",
+      "perfil": "zona2.leitor",
+      "solicitadoPor": "p-01",
+      "validadoPor": "p-04",
+      "justificativa": null
     }
   ],
   "contatosSegundoFator": [
@@ -669,7 +698,8 @@
     "ana@central.exemplo",
     "bruno@central.exemplo",
     "carla@central.exemplo",
-    "davi@central.exemplo"
+    "davi@central.exemplo",
+    "eva@central.exemplo"
   ],
   "confirmacoes": [
     {
