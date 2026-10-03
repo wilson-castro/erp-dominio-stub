@@ -1,4 +1,4 @@
-import { criarDominio, json, naoEncontrado, lerCorpo } from '../base.mjs'
+import { criarDominio, json, naoEncontrado, lerCorpo, loginDoToken } from '../base.mjs'
 import { criarArmazem } from '../armazem.mjs'
 import {
   cpfValido, ehAdmin, geriUnidade, geriModulo, tem, papeisDe, motivoParaNaoAtribuir,
@@ -8,7 +8,8 @@ import {
 /**
  * Gestão de acesso v2 — mock da API proposta para a gestão de acesso da base (porta 4020).
  * Contrato: contratos/gestao-acesso-v2.openapi.yaml. Dados: dados/semente/gestao-acesso-v2.json.
- * Quem chama se identifica por `Bearer dev.<login>[.<uuid>]` (pessoa da semente) ou `Bearer svc.<aplicacao>`
+ * Quem chama se identifica por `Bearer dev.<login>[.<uuid>]` (pessoa da semente; com `IDP_EMISSOR`, pelo
+ * access token do IdP, com `preferred_username` = login) ou `Bearer svc.<aplicacao>`
  * (provedor de identidade `idp`, módulos, BFFs). É mock: o login real é do provedor de identidade.
  *
  * Respostas seguem as regras da base: 401 sem credencial, 404 para o que está fora do escopo de quem
@@ -19,10 +20,12 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
   const armazem = criarArmazem('gestao-acesso-v2', { dir })
   const e = armazem.dados
   const pessoaDoLogin = (login) => e.pessoas.find((p) => p.login === login && p.status !== 'desligado')
-  const identificar = (auth) => {
-    // `dev.<login>` ou o token de desenvolvimento do shell, `dev.<login>.<uuid>`
-    const m = /^Bearer dev\.([a-z0-9]+)(?:\.[0-9a-f-]{36})?$/.exec(auth ?? '')
-    return m ? pessoaDoLogin(m[1])?.id ?? null : null
+  // modo de desenvolvimento: `dev.<login>` ou o token de desenvolvimento do shell, `dev.<login>.<uuid>`
+  const loginDev = (auth) => /^Bearer dev\.([a-z0-9]+)(?:\.[0-9a-f-]{36})?$/.exec(auth ?? '')?.[1] ?? null
+  // modo JWT (IDP_EMISSOR): o login é o `preferred_username` do token verificado (ADR-0013, decisão 7)
+  const identificar = async (auth) => {
+    const login = await loginDoToken(auth, loginDev)
+    return login ? pessoaDoLogin(login)?.id ?? null : null
   }
   const novoId = (prefixo) => `${prefixo}-${++e.sequencia}`
   const pessoa = (id) => e.pessoas.find((p) => p.id === id)

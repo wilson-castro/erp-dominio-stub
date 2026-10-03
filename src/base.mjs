@@ -1,4 +1,5 @@
 import { createServer } from 'node:http'
+import { verificadorDoAmbiente } from './jwt.mjs'
 
 /**
  * Atores de desenvolvimento. O token de dev tem a forma `dev.<usuario>.<uuid>`; um IdP
@@ -11,6 +12,29 @@ export function usuarioDoToken(auth) {
   const partes = auth.slice(7).split('.')
   if (partes[0] !== 'dev' || !USUARIOS.includes(partes[1])) return null
   return partes[1]
+}
+
+let verificador
+/**
+ * Um modo de identificação por processo (ADR-0013, decisão 7), decidido uma vez pelo ambiente: com
+ * `IDP_EMISSOR`, só o access token do IdP (JWT RS256, `src/jwt.mjs`); sem ele, só o token de
+ * desenvolvimento. Configuração inválida lança aqui; `servidor.mjs` chama na subida.
+ */
+export function verificadorDoProcesso() {
+  if (verificador === undefined) verificador = verificadorDoAmbiente()
+  return verificador
+}
+
+/**
+ * Login de quem chama, pelo modo do processo: em modo JWT, o `preferred_username` do token
+ * verificado; em modo de desenvolvimento, o que `dev(authorization)` extrai do token dev.
+ * Um nunca vale no modo do outro.
+ */
+export async function loginDoToken(auth, dev) {
+  const jwt = verificadorDoProcesso()
+  if (!jwt) return dev(auth)
+  const m = /^Bearer ([A-Za-z0-9_.-]+)$/.exec(auth ?? '')
+  return m ? (await jwt.verificar(m[1]))?.preferred_username ?? null : null
 }
 
 /** Token de serviço de dev: `svc.<aplicacao>`. */
@@ -39,9 +63,10 @@ export function lerCorpo(req) {
 /**
  * Cada rota: `[metodo, /regex/, handler(ctx)]`. `ctx` traz `usuario`, `servico`, `params`,
  * `req`, `res`. O domínio recusa sozinho o que vem do navegador e o que vem sem credencial.
- * `identificar(authorization)` devolve o usuário do token; o padrão aceita os atores de desenvolvimento.
+ * `identificar(authorization)` devolve (ou promete) o usuário do token; o padrão segue o modo do
+ * processo (`loginDoToken`): o `preferred_username` do JWT, ou um ator de desenvolvimento.
  */
-export function criarDominio(rotas, { exigeUsuario = true, identificar = usuarioDoToken } = {}) {
+export function criarDominio(rotas, { exigeUsuario = true, identificar = (auth) => loginDoToken(auth, usuarioDoToken) } = {}) {
   return createServer(async (req, res) => {
     // O domínio não é alcançável a partir do navegador (invariante 10). Para loopback o
     // navegador sempre manda Sec-Fetch-Site e Sec-Fetch-Dest, e Origin em fetch
@@ -49,7 +74,9 @@ export function criarDominio(rotas, { exigeUsuario = true, identificar = usuario
     if (req.headers.origin || req.headers['sec-fetch-site'] || req.headers['sec-fetch-dest']) {
       return json(res, 403, { codigo: 'OPERACAO_NAO_PERMITIDA' })
     }
-    const usuario = identificar(req.headers.authorization)
+    let usuario = null
+    // falha inesperada na verificação é credencial recusada, nunca 500 com detalhe
+    try { usuario = await identificar(req.headers.authorization) } catch { usuario = null }
     const servico = servicoDoToken(req.headers.authorization)
     if (exigeUsuario && !usuario && !servico) return json(res, 401, { codigo: 'SESSAO_EXPIRADA' })
 

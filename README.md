@@ -33,6 +33,17 @@ tarefas, perfis e concessões). Para mudar o que o showcase mostra, edite a seme
 Com `DADOS_DIR`, o estado vai para `<DADOS_DIR>/<dominio>.json`, gravado por arquivo temporário +
 rename. Sem ele (verificação ponta a ponta), cada subida parte da semente e nada é gravado.
 
-Atores de desenvolvimento: `ana`, `bruno`, `carla`, `davi`.
+Atores de desenvolvimento: `ana`, `bruno`, `carla`, `davi`, `eva`.
+
+## Identificação: um modo por processo
+
+- **Sem `IDP_EMISSOR`** (padrão): só o token de desenvolvimento (`Bearer dev.<ator>.<uuid>`); todo JWT é recusado.
+- **Com `IDP_EMISSOR`** (showcase com Keycloak): só o access token do IdP, verificado em `src/jwt.mjs` com
+  `node:crypto` (RS256, chave do JWKS do emissor por `kid`, `iss`, `aud` com `erp-dominios`, `exp`/`nbf`); o ator
+  é o `preferred_username`. O token dev é recusado.
+- Nos dois modos, `Bearer svc.<aplicacao>` identifica o registro de manifesto das zonas.
+
+Toda recusa é `401 { codigo: 'SESSAO_EXPIRADA' }`, sem motivo. Timeout, cache do JWKS e tolerância de relógio:
+`docs/CONFIGURACAO.md` §4 do repositório principal (ADR-0013, decisão 7).
 
 A base inteira (subir, verificar ponta a ponta) é operada pelo repositório principal `nextjs-mfe`: veja o README de lá.

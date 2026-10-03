@@ -4,6 +4,7 @@ import { criarDominioC } from './dominio-c.mjs'
 import { criarDominioPlataforma } from './dominio-plataforma.mjs'
 import { criarEstadoDeAcesso, criarGestaoDeAcesso } from './gestao-acesso.mjs'
 import { criarGestaoDeAcessoV2 } from './gestao-acesso-v2/servidor.mjs'
+import { verificadorDoProcesso } from './base.mjs'
 
 /** Porta de cada domínio falso. Loopback apenas: domínio nunca fica exposto (invariante 10). */
 export const DOMINIOS = {
@@ -19,7 +20,11 @@ export const DOMINIOS = {
 // `node src/servidor.mjs [nome...]` sobe só os domínios nomeados; sem nome, todos.
 // Com DADOS_DIR, cada domínio grava o próprio estado em <DADOS_DIR>/<nome>.json (showcase);
 // sem ele, parte da semente em memória a cada subida (verificação ponta a ponta).
+// Com IDP_EMISSOR, só o access token do IdP vale; sem ele, só o token dev (ADR-0013, decisão 7).
+// A configuração é lida antes de escutar: valor inválido derruba a subida, não a primeira requisição.
 if (import.meta.main) {
+  const jwt = verificadorDoProcesso()
+  console.log(jwt ? `identidade: JWT do emissor ${process.env.IDP_EMISSOR}` : 'identidade: token de desenvolvimento')
   const pedidos = process.argv.slice(2)
   for (const [nome, { porta, criar }] of Object.entries(DOMINIOS)) {
     if (pedidos.length && !pedidos.includes(nome)) continue

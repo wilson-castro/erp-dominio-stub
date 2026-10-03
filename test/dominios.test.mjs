@@ -57,3 +57,26 @@ test('concluir tarefa exige grupo, If-Match e versao atual', async () => {
   assert.equal(r.headers.get('etag'), '"4"')
   assert.equal((await r.json()).concluida, true)
 })
+
+test('sem IDP_EMISSOR (modo de desenvolvimento), JWT bem formado e assinado e recusado', async () => {
+  const { generateKeyPairSync, sign } = await import('node:crypto')
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
+  const b64u = (v) => Buffer.from(JSON.stringify(v)).toString('base64url')
+  const agora = Math.floor(Date.now() / 1000)
+  const h = b64u({ alg: 'RS256', typ: 'JWT', kid: 'k1' })
+  const p = b64u({ iss: 'http://127.0.0.1:8080/realms/erp', aud: 'erp-dominios', exp: agora + 300, preferred_username: 'bruno' })
+  const jwt = `${h}.${p}.${sign('sha256', Buffer.from(`${h}.${p}`), privateKey).toString('base64url')}`
+  const r = await fetch(`${a}/v1/recursos`, { headers: { authorization: `Bearer ${jwt}` } })
+  assert.equal(r.status, 401)
+  assert.deepEqual(await r.json(), { codigo: 'SESSAO_EXPIRADA' })
+})
+
+test('falha inesperada ao identificar e 401 normalizado, e o dominio segue no ar', async () => {
+  const { criarDominio, json } = await import('../src/base.mjs')
+  const d = await subir(criarDominio([['GET', /^\/x$/, ({ res }) => json(res, 200, {})]], { identificar: async () => { throw new Error('detalhe interno') } }))
+  for (let i = 0; i < 2; i++) {
+    const r = await fetch(`${d}/x`, como('bruno'))
+    assert.equal(r.status, 401)
+    assert.deepEqual(await r.json(), { codigo: 'SESSAO_EXPIRADA' })
+  }
+})
