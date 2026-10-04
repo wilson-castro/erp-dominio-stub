@@ -31,14 +31,22 @@ function inteiro(valor, nome, padrao, teto, minimo = 1) {
 }
 
 /**
- * Configuração validada. Os valores chegam como texto do ambiente; os padrões são os de
- * docs/CONFIGURACAO.md §4. `http://` no emissor só fora de produção (ADR-0013, decisão 5).
+ * Host de loopback, na forma já normalizada pelo `URL` (`hostname`), por igualdade. Espelha a regra do
+ * núcleo (`borda/http-local.ts`, ADR-0013 adendo 2); o stub não depende do núcleo.
  */
-export function configuracaoJwt({ emissor, producao = false, timeoutMs, ttlS, intervaloMinS, toleranciaS } = {}) {
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]'])
+export const ehLoopback = (hostname) => LOOPBACK.has(hostname)
+
+/**
+ * Configuração validada. Os valores chegam como texto do ambiente; os padrões são os de
+ * docs/CONFIGURACAO.md §4. `http://` no emissor só fora de produção (ADR-0013, decisão 5), ou em produção
+ * com `httpLocal` (`ERP_PERMITIR_HTTP_LOCAL=1`) e host de loopback (adendo 2).
+ */
+export function configuracaoJwt({ emissor, producao = false, httpLocal = false, timeoutMs, ttlS, intervaloMinS, toleranciaS } = {}) {
   let url
   try { url = new URL(String(emissor)) } catch { throw new Error('IDP_EMISSOR invalido: nao e URL absoluta') }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error('IDP_EMISSOR invalido: precisa de https')
-  if (url.protocol === 'http:' && producao) throw new Error('IDP_EMISSOR invalido: precisa de https em producao')
+  if (url.protocol === 'http:' && producao && !(httpLocal && ehLoopback(url.hostname))) throw new Error('IDP_EMISSOR invalido: precisa de https em producao')
   if (url.username || url.password || url.search || url.hash) throw new Error('IDP_EMISSOR invalido: sem credencial, query nem fragmento')
   const c = {
     emissor: String(emissor),
@@ -58,6 +66,7 @@ export function verificadorDoAmbiente() {
   return criarVerificadorJwt(configuracaoJwt({
     emissor: process.env.IDP_EMISSOR,
     producao: process.env.NODE_ENV === 'production',
+    httpLocal: process.env.ERP_PERMITIR_HTTP_LOCAL === '1',
     timeoutMs: process.env.ERP_DESTINO_TIMEOUT_MS,
     ttlS: process.env.ERP_JWKS_TTL_S,
     intervaloMinS: process.env.ERP_JWKS_INTERVALO_MIN_S,
