@@ -41,7 +41,11 @@ Atores de desenvolvimento: `ana`, `bruno`, `carla`, `davi`, `eva`.
 - **Com `IDP_EMISSOR`** (showcase com Keycloak): só o access token do IdP, verificado em `src/jwt.mjs` com
   `node:crypto` (RS256, chave do JWKS do emissor por `kid`, `iss`, `aud` com `erp-dominios`, `exp`/`nbf`); o ator
   é o `preferred_username`. O token dev é recusado.
-- Nos dois modos, `Bearer svc.<aplicacao>` identifica o registro de manifesto das zonas.
+- `Bearer svc.<aplicacao>` (token de serviço, **sem segredo**):
+  - sem `IDP_EMISSOR`: vale em toda rota que o aceita, simulando os serviços da gestão de acesso
+    (`svc.idp` no `primeiro-acesso`, qualquer serviço em `decisoes` e `eventos`) e o registro de manifesto;
+  - com `IDP_EMISSOR`: vale **só** para registrar o manifesto do próprio módulo (`svc.zona1` registra só `zona1`;
+    outro id é 403). Em toda outra rota, inclusive `svc.idp`, é 401. Motivo e risco residual: ADR-0013, adendo 1.
 
 Toda recusa é `401 { codigo: 'SESSAO_EXPIRADA' }`, sem motivo. Timeout, cache do JWKS e tolerância de relógio:
 `docs/CONFIGURACAO.md` §4 do repositório principal (ADR-0013, decisão 7).

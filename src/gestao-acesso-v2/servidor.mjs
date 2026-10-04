@@ -1,4 +1,4 @@
-import { criarDominio, json, naoEncontrado, lerCorpo, loginDoToken } from '../base.mjs'
+import { criarDominio, json, naoEncontrado, lerCorpo, loginDoToken, REGISTRO_DE_MANIFESTO } from '../base.mjs'
 import { criarArmazem } from '../armazem.mjs'
 import {
   cpfValido, ehAdmin, geriUnidade, geriModulo, tem, papeisDe, motivoParaNaoAtribuir,
@@ -121,6 +121,8 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
     }],
 
     // O módulo declara as próprias funcionalidades; módulo novo nasce "validado" (restrito).
+    // Única rota que admite token de serviço com IDP_EMISSOR; `primeiro-acesso`, `decisoes` e `eventos`
+    // ficam fechadas nesse modo (ADR-0013, adendo 1).
     ['POST', /^\/v2\/modulos\/manifesto$/, async ({ req, res, servico }) => {
       const c = await lerCorpo(req)
       if (!servico) return erro(res, 401, 'SESSAO_EXPIRADA')
@@ -132,7 +134,7 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
       for (const perfil of m.perfis) perfil.funcionalidades = perfil.funcionalidades.filter((f) => m.funcionalidades.includes(f))
       registrar('MANIFESTO_REGISTRADO', null, null, { modulo: m.id })
       json(res, 200, m)
-    }],
+    }, REGISTRO_DE_MANIFESTO],
 
     // --- catálogo de módulos -----------------------------------------------------------------
     ['GET', /^\/v2\/modulos$/, ({ res, usuario }) => {

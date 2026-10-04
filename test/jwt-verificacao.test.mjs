@@ -350,11 +350,81 @@ test('gestao de acesso v2 com IDP_EMISSOR: pessoa pelo login = preferred_usernam
   assert.equal((await eu('Bearer dev.admin1')).status, 401, 'token dev curto aceito em modo JWT')
 })
 
-test('token de servico (svc.<aplicacao>) segue valendo com IDP_EMISSOR: e o registro de manifesto, nao um usuario', async () => {
-  // O modo do processo troca só o token de USUÁRIO (ADR-0013, decisão 7); o `registrar-manifesto` das
-  // zonas não tem login no IdP e se identifica por `svc.<zona>` nos dois modos.
+// --- token de serviço em modo JWT (ADR-0013, adendo 1) -----------------------------------------------
+// `svc.<aplicacao>` não tem segredo: com IDP_EMISSOR ele só vale para o módulo registrar o PRÓPRIO
+// manifesto. Toda outra rota de todo domínio o recusa com 401, inclusive `svc.idp`.
+
+const { readFileSync } = await import('node:fs')
+const { criarDominioB } = await import('../src/dominio-b.mjs')
+const { criarDominioC } = await import('../src/dominio-c.mjs')
+const { criarDominioPlataforma } = await import('../src/dominio-plataforma.mjs')
+const { criarGestaoDeAcesso } = await import('../src/gestao-acesso.mjs')
+
+const SERVIDORES = {
+  'dominio-a.mjs': criarDominioA, 'dominio-b.mjs': criarDominioB, 'dominio-c.mjs': criarDominioC,
+  'dominio-plataforma.mjs': criarDominioPlataforma, 'gestao-acesso.mjs': () => criarGestaoDeAcesso(),
+  'gestao-acesso-v2/servidor.mjs': criarGestaoDeAcessoV2,
+}
+const MANIFESTO = new Set(['POST /v1/manifestos', 'POST /v2/modulos/manifesto'])
+
+/** Toda rota declarada no fonte de cada domínio, com um caminho de exemplo: rota nova entra sozinha. */
+function rotasDe(arquivo) {
+  const fonte = readFileSync(new URL(`../src/${arquivo}`, import.meta.url), 'utf8')
+  return [...fonte.matchAll(/\['(GET|POST|PUT|PATCH|DELETE)', \/\^(.*?)\$\//g)]
+    .map(([, metodo, re]) => [metodo, re.replaceAll('([^/]+)', 'x').replaceAll('\\/', '/')])
+}
+
+test('modo JWT: token de servico recusado com 401 em toda rota de todo dominio, menos o registro de manifesto', async () => {
   reiniciarIdp()
-  const a = await subir(criarDominioA())
-  const r = await fetch(`${a}/v1/recursos`, { headers: { authorization: 'Bearer svc.zona1' } })
-  assert.notEqual(r.status, 401)
+  let total = 0
+  for (const [arquivo, criar] of Object.entries(SERVIDORES)) {
+    const url = await subir(criar())
+    const rotas = rotasDe(arquivo)
+    assert.ok(rotas.length > 0, `${arquivo}: nenhuma rota achada`)
+    for (const [metodo, caminho] of rotas) {
+      if (MANIFESTO.has(`${metodo} ${caminho}`)) continue
+      for (const svc of ['svc.idp', 'svc.zona1', 'svc.acesso']) {
+        const corpo = metodo === 'GET' ? undefined : JSON.stringify({ cpf: '52998224725', sub: 'x', pessoa: 'p-1', modulo: 'zona1', id: 'zona1' })
+        const r = await fetch(`${url}${caminho}`, { method: metodo, headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json', 'if-match': '"1"' }, body: corpo })
+        assert.equal(r.status, 401, `${arquivo} ${metodo} ${caminho} com ${svc}`)
+        assert.deepEqual(await r.json(), { codigo: 'SESSAO_EXPIRADA' })
+        total++
+      }
+    }
+  }
+  assert.ok(total >= 3 * 39, `so ${total} chamadas: a varredura de rotas encolheu`)
+})
+
+test('modo JWT: primeiro-acesso, decisoes e eventos fecham para svc.idp e para qualquer servico', async () => {
+  reiniciarIdp()
+  const v2 = await subir(criarGestaoDeAcessoV2())
+  const pedir = (caminho, svc, corpo) => fetch(`${v2}${caminho}`, {
+    method: corpo ? 'POST' : 'GET', headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json' }, body: corpo && JSON.stringify(corpo),
+  })
+  for (const svc of ['svc.idp', 'svc.zona1', 'svc.bff']) {
+    assert.equal((await pedir('/v2/primeiro-acesso', svc, { cpf: '52998224725', sub: 'sub-forjado' })).status, 401, `primeiro-acesso ${svc}`)
+    assert.equal((await pedir('/v2/decisoes', svc, { pessoa: 'p-1', modulo: 'zona1', funcionalidade: 'recursos.ver' })).status, 401, `decisoes ${svc}`)
+    assert.equal((await pedir('/v2/eventos', svc)).status, 401, `eventos ${svc}`)
+  }
+  // dentes: um JWT válido de usuário nessas rotas não é 401 de credencial ausente por acaso do stub
+  assert.equal((await fetch(`${v2}/v2/eu`, { headers: { authorization: `Bearer ${assinar(claims({ preferred_username: 'ana' }))}` } })).status, 200)
+})
+
+test('modo JWT: registro de manifesto aceita so o modulo do proprio servico (v2: 200; v1: 204), outro id e 403', async () => {
+  reiniciarIdp()
+  const v2 = await subir(criarGestaoDeAcessoV2())
+  const manifesto = (svc, corpo) => fetch(`${v2}/v2/modulos/manifesto`, {
+    method: 'POST', headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json' }, body: JSON.stringify(corpo),
+  })
+  const zona1 = { id: 'zona1', nome: 'Zona 1', funcionalidades: ['recursos.ver'] }
+  assert.equal((await manifesto('svc.zona1', zona1)).status, 200, 'proprio modulo')
+  assert.equal((await manifesto('svc.zona2', zona1)).status, 403, 'modulo de outro servico')
+  assert.equal((await manifesto('svc.idp', zona1)).status, 403, 'svc.idp registrando zona1')
+  assert.equal((await manifesto('dev.ana.x', zona1)).status, 401, 'token dev')
+
+  const v1 = await subir(criarGestaoDeAcesso())
+  const m1 = { zona: 'zona2', modulos: [{ id: 'zona2.tarefas', rotulo: 'Tarefas', prefixo: '/zona2', restritoPorPadrao: true }], perfis: [], concessoes: {} }
+  const registrar = (svc) => fetch(`${v1}/v1/manifestos`, { method: 'POST', headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json' }, body: JSON.stringify(m1) })
+  assert.equal((await registrar('svc.zona2')).status, 204, 'v1: proprio modulo')
+  assert.equal((await registrar('svc.zona1')).status, 403, 'v1: modulo de outro servico')
 })

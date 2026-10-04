@@ -1,5 +1,5 @@
 import { validarManifesto } from '@erp/contratos'
-import { criarDominio, json, naoEncontrado, lerCorpo } from './base.mjs'
+import { criarDominio, json, naoEncontrado, lerCorpo, REGISTRO_DE_MANIFESTO } from './base.mjs'
 import { criarArmazem } from './armazem.mjs'
 
 /**
@@ -97,7 +97,8 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
       json(res, 200, modulosPermitidos(e, usuario))
     }],
 
-    // Uma zona só registra o PRÓPRIO manifesto: o token de serviço nomeia a aplicação.
+    // Uma zona só registra o PRÓPRIO manifesto: o token de serviço nomeia a aplicação. Única rota
+    // que admite token de serviço com IDP_EMISSOR (ADR-0013, adendo 1).
     ['POST', /^\/v1\/manifestos$/, async ({ req, res, servico }) => {
       const corpo = await lerCorpo(req)
       if (!servico) return json(res, 401, { codigo: 'SESSAO_EXPIRADA' })
@@ -105,7 +106,7 @@ export function criarGestaoDeAcesso(estado = criarEstadoDeAcesso()) {
       try { registrarManifesto(e, corpo) } catch { return json(res, 422, { codigo: 'ERRO_INTERNO' }) }
       e.salvar?.()
       json(res, 204, undefined)
-    }],
+    }, REGISTRO_DE_MANIFESTO],
 
     // Administração: quem não é administrador recebe 404, como se a rota não existisse.
     ['GET', /^\/v1\/catalogo$/, ({ res, usuario }) => {

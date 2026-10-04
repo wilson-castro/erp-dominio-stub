@@ -61,7 +61,23 @@ export function lerCorpo(req) {
 }
 
 /**
- * Cada rota: `[metodo, /regex/, handler(ctx)]`. `ctx` traz `usuario`, `servico`, `params`,
+ * Rota de registro de manifesto: a única que admite token de serviço em modo JWT (ADR-0013, adendo 1).
+ * O handler ainda confere que o id do manifesto é o nome do serviço do token.
+ */
+export const REGISTRO_DE_MANIFESTO = { registroDeManifesto: true }
+
+/**
+ * Token de serviço que a rota admite. Sem `IDP_EMISSOR`, qualquer rota recebe o `svc.<aplicacao>` (como
+ * sempre foi); com ele, só a rota marcada com `REGISTRO_DE_MANIFESTO` (ADR-0013, adendo 1): o token
+ * não tem segredo, então fora do registro do próprio módulo ele não vale nada.
+ */
+function servicoAdmitido(auth, opcoesDaRota) {
+  if (verificadorDoProcesso() && !opcoesDaRota?.registroDeManifesto) return null
+  return servicoDoToken(auth)
+}
+
+/**
+ * Cada rota: `[metodo, /regex/, handler(ctx), opcoes?]`. `ctx` traz `usuario`, `servico`, `params`,
  * `req`, `res`. O domínio recusa sozinho o que vem do navegador e o que vem sem credencial.
  * `identificar(authorization)` devolve (ou promete) o usuário do token; o padrão segue o modo do
  * processo (`loginDoToken`): o `preferred_username` do JWT, ou um ator de desenvolvimento.
@@ -77,13 +93,14 @@ export function criarDominio(rotas, { exigeUsuario = true, identificar = (auth) 
     let usuario = null
     // falha inesperada na verificação é credencial recusada, nunca 500 com detalhe
     try { usuario = await identificar(req.headers.authorization) } catch { usuario = null }
-    const servico = servicoDoToken(req.headers.authorization)
+    const caminho = (req.url ?? '').split('?')[0]
+    const rota = rotas.find(([metodo, padrao]) => req.method === metodo && padrao.test(caminho))
+    const servico = servicoAdmitido(req.headers.authorization, rota?.[3])
     if (exigeUsuario && !usuario && !servico) return json(res, 401, { codigo: 'SESSAO_EXPIRADA' })
 
-    const caminho = (req.url ?? '').split('?')[0]
-    for (const [metodo, padrao, handler] of rotas) {
+    if (rota) {
+      const [, padrao, handler] = rota
       const m = padrao.exec(caminho)
-      if (!m || req.method !== metodo) continue
       let params
       // `%E0` lança URIError; sem o try, uma requisição derruba o stub
       try { params = m.slice(1).map(decodeURIComponent) } catch { return naoEncontrado(res) }
