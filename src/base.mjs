@@ -61,18 +61,21 @@ export function lerCorpo(req) {
 }
 
 /**
- * Rota de registro de manifesto: a única que admite token de serviço em modo JWT (ADR-0013, adendo 1).
- * O handler ainda confere que o id do manifesto é o nome do serviço do token.
+ * Rota que admite token de serviço em modo JWT: o registro de manifesto (ADR-0013, adendo 1) e as rotas do
+ * mapa de zonas (ADR-0015). Todas as outras o recusam. O handler ainda confere QUEM é o serviço do token
+ * (o manifesto e a rota de uma zona só valem para o `svc.{id}` da própria zona; o mapa só para `svc.shell`).
  */
-export const REGISTRO_DE_MANIFESTO = { registroDeManifesto: true }
+export const ROTA_DE_SERVICO = { rotaDeServico: true }
+/** Nome antigo do marcador, mantido para quem ainda importa. */
+export const REGISTRO_DE_MANIFESTO = ROTA_DE_SERVICO
 
 /**
  * Token de serviço que a rota admite. Sem `IDP_EMISSOR`, qualquer rota recebe o `svc.<aplicacao>` (como
- * sempre foi); com ele, só a rota marcada com `REGISTRO_DE_MANIFESTO` (ADR-0013, adendo 1): o token
- * não tem segredo, então fora do registro do próprio módulo ele não vale nada.
+ * sempre foi); com ele, só a rota marcada com `ROTA_DE_SERVICO` (ADR-0013, adendo 1; ADR-0015): o token
+ * não tem segredo, então fora dessas rotas ele não vale nada.
  */
 function servicoAdmitido(auth, opcoesDaRota) {
-  if (verificadorDoProcesso() && !opcoesDaRota?.registroDeManifesto) return null
+  if (verificadorDoProcesso() && !opcoesDaRota?.rotaDeServico) return null
   return servicoDoToken(auth)
 }
 

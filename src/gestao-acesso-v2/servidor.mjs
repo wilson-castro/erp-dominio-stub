@@ -1,4 +1,4 @@
-import { criarDominio, json, naoEncontrado, lerCorpo, loginDoToken, REGISTRO_DE_MANIFESTO } from '../base.mjs'
+import { criarDominio, json, naoEncontrado, lerCorpo, loginDoToken, ROTA_DE_SERVICO } from '../base.mjs'
 import { criarArmazem } from '../armazem.mjs'
 import {
   cpfValido, ehAdmin, geriUnidade, geriModulo, tem, papeisDe, motivoParaNaoAtribuir,
@@ -70,6 +70,19 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
     }
   }
 
+  // Mapa de zonas (ADR-0015): cada zona registra a própria rota; só o shell lê o mapa.
+  const RESERVADOS_DO_SHELL = ['api', 'login', 'erro-de-zona', '_next']
+  const zonaValida = (id) => /^[a-z0-9][a-z0-9-]*$/.test(id) && !RESERVADOS_DO_SHELL.some((r) => id === r || id === `${r}-static`)
+  /** Origem pura: http(s) com host, sem credencial, caminho (além de `/`), query nem fragmento. Devolve a origem normalizada. */
+  function origemValida(origem) {
+    if (typeof origem !== 'string' || /[?#]/.test(origem)) return null
+    let u
+    try { u = new URL(origem) } catch { return null }
+    if (!['http:', 'https:'].includes(u.protocol) || !u.hostname || u.username || u.password || u.pathname !== '/') return null
+    return u.origin
+  }
+  const vistaDaZona = ({ id, origem, registradaEm }) => ({ id, origem, registradaEm })
+
   const exigeVersao = (req, res, recurso) => {
     const im = req.headers['if-match']
     if (!im) { erro(res, 428, 'VERSAO_OBRIGATORIA'); return false }
@@ -134,7 +147,36 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
       for (const perfil of m.perfis) perfil.funcionalidades = perfil.funcionalidades.filter((f) => m.funcionalidades.includes(f))
       registrar('MANIFESTO_REGISTRADO', null, null, { modulo: m.id })
       json(res, 200, m)
-    }, REGISTRO_DE_MANIFESTO],
+    }, ROTA_DE_SERVICO],
+
+    // --- mapa de zonas (ADR-0015) -------------------------------------------------------------
+    // A zona registra a própria rota (`svc.{id}`); o shell lê o mapa (`svc.shell`). Admitem token de serviço
+    // também com IDP_EMISSOR (ROTA_DE_SERVICO); o handler confere quem é o serviço.
+    ['POST', /^\/v2\/zonas\/([^/]+)\/rota$/, async ({ req, res, servico, params: [id] }) => {
+      const c = await lerCorpo(req)
+      if (!zonaValida(id)) return erro(res, 422, 'ZONA_INVALIDA')
+      if (servico !== id) return erro(res, 403, 'OPERACAO_NAO_PERMITIDA')
+      const origem = origemValida(c?.origem)
+      if (!origem) return erro(res, 422, 'ORIGEM_INVALIDA')
+      e.zonas ??= []
+      const z = { id, origem, registradaEm: agora().toISOString() }
+      const i = e.zonas.findIndex((x) => x.id === id)
+      if (i >= 0) e.zonas[i] = z; else e.zonas.push(z)
+      registrar('ROTA_DE_ZONA_REGISTRADA', null, null, { zona: id, origem })
+      json(res, 200, vistaDaZona(z))
+    }, ROTA_DE_SERVICO],
+    ['DELETE', /^\/v2\/zonas\/([^/]+)\/rota$/, ({ res, servico, params: [id] }) => {
+      if (servico !== id) return erro(res, 403, 'OPERACAO_NAO_PERMITIDA')
+      const i = (e.zonas ??= []).findIndex((x) => x.id === id)
+      if (i < 0) return naoEncontrado(res)
+      const [z] = e.zonas.splice(i, 1)
+      registrar('ROTA_DE_ZONA_REMOVIDA', null, null, { zona: id, origem: z.origem })
+      json(res, 204, undefined)
+    }, ROTA_DE_SERVICO],
+    ['GET', /^\/v2\/zonas$/, ({ res, servico }) => {
+      if (servico !== 'shell') return naoEncontrado(res)
+      json(res, 200, (e.zonas ?? []).map(vistaDaZona))
+    }, ROTA_DE_SERVICO],
 
     // --- catálogo de módulos -----------------------------------------------------------------
     ['GET', /^\/v2\/modulos$/, ({ res, usuario }) => {

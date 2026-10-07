@@ -365,7 +365,8 @@ const SERVIDORES = {
   'dominio-plataforma.mjs': criarDominioPlataforma, 'gestao-acesso.mjs': () => criarGestaoDeAcesso(),
   'gestao-acesso-v2/servidor.mjs': criarGestaoDeAcessoV2,
 }
-const MANIFESTO = new Set(['POST /v1/manifestos', 'POST /v2/modulos/manifesto'])
+// rotas que admitem token de serviço em modo JWT; o teste dedicado de cada uma está abaixo
+const MANIFESTO = new Set(['POST /v1/manifestos', 'POST /v2/modulos/manifesto', 'POST /v2/zonas/x/rota', 'DELETE /v2/zonas/x/rota', 'GET /v2/zonas'])
 
 /** Toda rota declarada no fonte de cada domínio, com um caminho de exemplo: rota nova entra sozinha. */
 function rotasDe(arquivo) {
@@ -427,4 +428,25 @@ test('modo JWT: registro de manifesto aceita so o modulo do proprio servico (v2:
   const registrar = (svc) => fetch(`${v1}/v1/manifestos`, { method: 'POST', headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json' }, body: JSON.stringify(m1) })
   assert.equal((await registrar('svc.zona2')).status, 204, 'v1: proprio modulo')
   assert.equal((await registrar('svc.zona1')).status, 403, 'v1: modulo de outro servico')
+})
+
+// --- rotas do mapa de zonas em modo JWT (C3, ADR-0015) ------------------------------------------------
+// As três rotas do mapa admitem `svc.<aplicacao>` com IDP_EMISSOR, como o manifesto; as demais seguem 401.
+
+test('modo JWT: rotas do mapa de zonas aceitam svc.*; o handler ainda confere quem e o servico', async () => {
+  reiniciarIdp()
+  const v2 = await subir(criarGestaoDeAcessoV2())
+  const pedir = (metodo, caminho, svc, corpo) => fetch(`${v2}${caminho}`, {
+    method: metodo, headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json' }, body: corpo && JSON.stringify(corpo),
+  })
+  const origem = { origem: 'http://127.0.0.1:3001' }
+  assert.equal((await pedir('POST', '/v2/zonas/zona1/rota', 'svc.zona1', origem)).status, 200)
+  assert.equal((await pedir('POST', '/v2/zonas/zona1/rota', 'svc.zona2', origem)).status, 403)
+  assert.equal((await pedir('GET', '/v2/zonas', 'svc.shell')).status, 200)
+  assert.equal((await pedir('GET', '/v2/zonas', 'svc.zona1')).status, 404)
+  assert.equal((await pedir('DELETE', '/v2/zonas/zona1/rota', 'svc.zona1')).status, 204)
+  // sem credencial, e pessoa com JWT valido (nao e servico): as rotas continuam fechadas para elas
+  assert.equal((await fetch(`${v2}/v2/zonas`)).status, 401)
+  const jwtAdmin = `Bearer ${assinar(claims({ preferred_username: 'admin1' }))}`
+  assert.equal((await fetch(`${v2}/v2/zonas`, { headers: { authorization: jwtAdmin } })).status, 404)
 })

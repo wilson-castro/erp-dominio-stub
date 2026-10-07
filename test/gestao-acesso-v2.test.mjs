@@ -168,3 +168,71 @@ test('G02/G05 (auditor_b1_d1_3): o token de desenvolvimento e ancorado; /v2/eu s
     assert.equal((await fetch(`${url}/v2/eu`, { headers: { authorization: auth } })).status, 401, auth)
   }
 })
+
+// --- mapa de zonas: rota registrada pela própria zona, lida só pelo shell (C3, ADR-0015) ------------
+
+test('rota de zona: so o svc da propria zona grava; outro servico ou pessoa e 403; sem credencial 401', async () => {
+  const corpo = { origem: 'http://127.0.0.1:3001' }
+  assert.equal((await fetch(`${url}/v2/zonas/zona1/rota`, { method: 'POST', body: JSON.stringify(corpo) })).status, 401)
+  for (const quem of ['svc.zona2', 'svc.shell', 'admin1', 'gnorte1']) {
+    const r = await pedir(quem, '/v2/zonas/zona1/rota', corpo)
+    assert.equal(r.status, 403, quem)
+    assert.deepEqual(await r.json(), { codigo: 'OPERACAO_NAO_PERMITIDA' })
+  }
+  assert.deepEqual(await (await pedir('svc.shell', '/v2/zonas')).json(), [], 'nada foi gravado pelos recusados')
+})
+
+test('rota de zona: grava, devolve { id, origem, registradaEm } e registrar de novo substitui a origem', async () => {
+  const r = await pedir('svc.zona1', '/v2/zonas/zona1/rota', { origem: 'http://127.0.0.1:3001' })
+  assert.equal(r.status, 200)
+  assert.deepEqual(await r.json(), { id: 'zona1', origem: 'http://127.0.0.1:3001', registradaEm: '2026-09-22T12:00:00.000Z' })
+  assert.equal((await pedir('svc.zona1', '/v2/zonas/zona1/rota', { origem: 'https://zona1.interno.exemplo:8443/' })).status, 200)
+  const mapa = await (await pedir('svc.shell', '/v2/zonas')).json()
+  assert.deepEqual(mapa.map((z) => [z.id, z.origem]), [['zona1', 'https://zona1.interno.exemplo:8443']])
+})
+
+test('mapa de zonas: so o shell le; outro servico e pessoa (inclusive administrador) recebem 404', async () => {
+  assert.equal((await fetch(`${url}/v2/zonas`)).status, 401)
+  for (const quem of ['svc.zona1', 'svc.idp', 'admin1', 'gnorte1']) assert.equal((await pedir(quem, '/v2/zonas')).status, 404, quem)
+  assert.equal((await pedir('svc.shell', '/v2/zonas')).status, 200)
+})
+
+test('rota de zona: origem so http(s) com host, sem credencial, sem caminho, query nem fragmento', async () => {
+  for (const origem of ['http://127.0.0.1:3001/x', 'http://127.0.0.1:3001/?a=1', 'http://127.0.0.1:3001?a=1', 'http://127.0.0.1:3001/#f', 'http://u:s@h', 'http://u@h',
+    'javascript:x', 'ftp://h', 'file:///etc', 'sem-esquema', '', 7, null]) {
+    const r = await pedir('svc.zona2', '/v2/zonas/zona2/rota', { origem })
+    assert.equal(r.status, 422, String(origem))
+    assert.deepEqual(await r.json(), { codigo: 'ORIGEM_INVALIDA' })
+  }
+  assert.equal((await pedir('svc.zona2', '/v2/zonas/zona2/rota', {})).status, 422)
+  assert.equal((await pedir('svc.zona2', '/v2/zonas/zona2/rota', { origem: 'https://h' })).status, 200)
+})
+
+test('rota de zona: id fora do padrao ou reservado e 422 ZONA_INVALIDA', async () => {
+  for (const id of ['api', 'login', 'erro-de-zona', '_next', 'api-static', 'login-static', 'erro-de-zona-static', '_next-static', 'Zona1', '-zona', 'zona_1']) {
+    // credencial de serviço válida para o formato do token (o formato do token é mais estrito que o id), id inválido na URL
+    const r = await pedir(/^[a-z][a-z0-9-]*$/.test(id) ? `svc.${id}` : 'svc.zona1', `/v2/zonas/${id}/rota`, { origem: 'http://127.0.0.1:3001' })
+    assert.equal(r.status, 422, id)
+    assert.deepEqual(await r.json(), { codigo: 'ZONA_INVALIDA' })
+  }
+  assert.equal((await pedir('svc.estatica', '/v2/zonas/estatica/rota', { origem: 'http://127.0.0.1:3001' })).status, 200, 'sufixo -static so reserva quando o prefixo e reservado')
+})
+
+test('rota de zona: remover e so da propria zona, 204; sem rota 404; some do mapa', async () => {
+  assert.equal((await pedir('svc.zona2', '/v2/zonas/zona1/rota', undefined, 'DELETE')).status, 403)
+  assert.equal((await pedir('admin1', '/v2/zonas/zona1/rota', undefined, 'DELETE')).status, 403)
+  assert.equal((await pedir('svc.zona1', '/v2/zonas/zona1/rota', undefined, 'DELETE')).status, 204)
+  assert.equal((await pedir('svc.zona1', '/v2/zonas/zona1/rota', undefined, 'DELETE')).status, 404)
+  assert.ok(!(await (await pedir('svc.shell', '/v2/zonas')).json()).some((z) => z.id === 'zona1'))
+})
+
+test('rota de zona: registro e remocao viram eventos de auditoria com { zona, origem }', async () => {
+  await pedir('svc.zona3', '/v2/zonas/zona3/rota', { origem: 'http://127.0.0.1:3003' })
+  await pedir('svc.zona3', '/v2/zonas/zona3/rota', undefined, 'DELETE')
+  const ev = await (await pedir('auditor1', '/v2/auditoria')).json()
+  const registro = ev.filter((x) => x.tipo === 'ROTA_DE_ZONA_REGISTRADA' && x.zona === 'zona3')
+  assert.equal(registro.length, 1)
+  assert.equal(registro[0].origem, 'http://127.0.0.1:3003')
+  assert.equal(ev.filter((x) => x.tipo === 'ROTA_DE_ZONA_REMOVIDA' && x.zona === 'zona3').length, 1)
+  assert.ok(ev.some((x) => x.tipo === 'ROTA_DE_ZONA_REGISTRADA' && x.zona === 'zona2'), 'o registro de zona2 acima tambem')
+})

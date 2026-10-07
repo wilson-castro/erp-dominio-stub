@@ -9,7 +9,7 @@ info:
 
     Regras gerais:
     - quem chama se identifica por token (`Bearer`): pessoa (no mock, `dev.<login>`) ou serviço
-      (`svc.<aplicacao>`: `idp` para o provedor de identidade, o id do módulo para o manifesto, BFFs);
+      (`svc.<aplicacao>`: `idp` para o provedor de identidade, o id do módulo para o manifesto e para a rota da zona, `shell` para ler o mapa de zonas, BFFs);
     - 401 sem credencial; **404** para o que está fora do escopo de quem pergunta (não revela que
       existe); **403** para ação negada sobre o que ele legitimamente vê;
     - PATCH de recurso versionado exige `If-Match` com a versão conhecida (428 sem, 409 divergente);
@@ -58,6 +58,41 @@ paths:
       requestBody: { content: { application/json: { schema: { type: object, required: [id, funcionalidades], properties: { id: { type: string }, nome: { type: string }, funcionalidades: { type: array, items: { type: string, pattern: '^[a-z0-9-]+\.[a-z0-9-]+$' } } } } } } }
       responses:
         '200': { description: módulo, content: { application/json: { schema: { $ref: '#/components/schemas/Modulo' } } } }
+
+  /v2/zonas:
+    get:
+      summary: (shell) Mapa de zonas, uma entrada por zona com rota registrada
+      description: Só `Bearer svc.shell`. Qualquer outro serviço ou pessoa recebe 404 (o mapa não existe para quem não é o shell). Admite token de serviço também com `IDP_EMISSOR`.
+      responses:
+        '200': { description: mapa, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RotaDeZona' } } } } }
+        '401': { $ref: '#/components/responses/Erro' }
+        '404': { $ref: '#/components/responses/Erro' }
+  /v2/zonas/{id}/rota:
+    post:
+      summary: (serviço da própria zona) Registrar a origem da zona
+      description: |
+        Só `Bearer svc.{id}`, com `id` igual ao da URL; outro serviço ou pessoa recebe 403. `id` precisa casar com
+        `^[a-z0-9][a-z0-9-]*$` e não ser reservado pelo shell (`api`, `login`, `erro-de-zona`, `_next` e qualquer
+        `{reservado}-static`): 422 `ZONA_INVALIDA`. `origem` é `http:` ou `https:` com host, sem credencial, sem
+        caminho (além de `/`), query ou fragmento: 422 `ORIGEM_INVALIDA`. Registrar de novo substitui a origem.
+        Gera o evento de auditoria `ROTA_DE_ZONA_REGISTRADA` (`zona`, `origem`). Admite token de serviço também
+        com `IDP_EMISSOR`.
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      requestBody: { content: { application/json: { schema: { type: object, required: [origem], properties: { origem: { type: string, example: 'http://127.0.0.1:3001' } } } } } }
+      responses:
+        '200': { description: registrada, content: { application/json: { schema: { $ref: '#/components/schemas/RotaDeZona' } } } }
+        '401': { $ref: '#/components/responses/Erro' }
+        '403': { $ref: '#/components/responses/Erro' }
+        '422': { $ref: '#/components/responses/Erro' }
+    delete:
+      summary: (serviço da própria zona) Remover a rota da zona
+      description: Só `Bearer svc.{id}`. Zona sem rota registrada recebe 404. Gera o evento `ROTA_DE_ZONA_REMOVIDA`. Admite token de serviço também com `IDP_EMISSOR`.
+      parameters: [ { $ref: '#/components/parameters/id' } ]
+      responses:
+        '204': { description: removida }
+        '401': { $ref: '#/components/responses/Erro' }
+        '403': { $ref: '#/components/responses/Erro' }
+        '404': { $ref: '#/components/responses/Erro' }
 
   /v2/modulos:
     get:
@@ -232,6 +267,10 @@ components:
       properties:
         papel: { enum: [admin-geral, gestor-unidade, gestor-modulo, auditor-plataforma, auditor-modulo] }
         escopo: { type: [string, 'null'], description: 'unidade (gestor-unidade), módulo (gestor-modulo, auditor-modulo) ou null' }
+    RotaDeZona:
+      type: object
+      required: [id, origem, registradaEm]
+      properties: { id: { type: string }, origem: { type: string }, registradaEm: { type: string, format: date-time } }
     Modulo:
       type: object
       properties:
