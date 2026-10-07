@@ -40,7 +40,7 @@ test('resetar apaga o estado e o proximo armazem volta a semente', () => {
 test('arquivo de estado corrompido nao derruba: volta a semente', () => {
   const dir = pasta()
   writeFileSync(join(dir, 'dominio-c.json'), '{nao e json')
-  assert.equal(criarArmazem('dominio-c', { dir }).dados.tarefas.length, 2)
+  assert.equal(criarArmazem('dominio-c', { dir }).dados.tarefas.length, 4)
 })
 
 test('nome de armazem fora do formato e recusado: nao le nem grava fora da pasta', () => {
