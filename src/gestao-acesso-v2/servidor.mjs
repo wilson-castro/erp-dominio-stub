@@ -19,7 +19,7 @@ import {
 export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
   const armazem = criarArmazem('gestao-acesso-v2', { dir })
   const e = armazem.dados
-  const pessoaDoLogin = (login) => e.pessoas.find((p) => p.login === login && p.status !== 'desligado')
+  const pessoaDoLogin = (login) => e.pessoas.find((p) => p.login === login && !['desligado', 'suspenso'].includes(p.status))
   // modo de desenvolvimento: `dev.<login>` ou o token de desenvolvimento do shell, `dev.<login>.<uuid>`
   const loginDev = (auth) => /^Bearer dev\.([a-z0-9]+)(?:\.[0-9a-f-]{36})?$/.exec(auth ?? '')?.[1] ?? null
   // modo JWT (IDP_EMISSOR): o login é o `preferred_username` do token verificado (ADR-0013, decisão 7)

@@ -96,6 +96,22 @@ test('desligamento: revoga acessos e publica evento para encerrar sessoes', asyn
   assert.equal((await pedir('norte1', '/v2/eu')).status, 401)
 })
 
+test('suspensao: /v2/eu recusa com 401; pessoa ativa sem modulos continua com 200', async () => {
+  const isolada = await subir(criarGestaoDeAcessoV2())
+  const confirmar = await fetch(`${isolada}/v2/unidades/norte/confirmacoes`, {
+    method: 'POST', headers: { authorization: 'Bearer dev.gnorte1', 'content-type': 'application/json' },
+    body: JSON.stringify({ confirmadas: [] }),
+  })
+  assert.equal(confirmar.status, 200)
+  assert.ok((await confirmar.json()).suspensas.includes('p-12'))
+  for (const token of ['dev.norte1', 'dev.norte1.0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d']) {
+    assert.equal((await fetch(`${isolada}/v2/eu`, { headers: { authorization: `Bearer ${token}` } })).status, 401)
+  }
+  const ativa = await fetch(`${isolada}/v2/eu`, { headers: { authorization: 'Bearer dev.admin1' } })
+  assert.equal(ativa.status, 200)
+  assert.deepEqual((await ativa.json()).modulos, [])
+})
+
 test('PATCH exige If-Match; CPF e imutavel', async () => {
   assert.equal((await pedir('gnorte1', '/v2/pessoas/p-13', { nome: 'X' }, 'PATCH')).status, 428)
   assert.equal((await pedir('gnorte1', '/v2/pessoas/p-13', { nome: 'X' }, 'PATCH', { 'if-match': '"9"' })).status, 409)
