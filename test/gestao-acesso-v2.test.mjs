@@ -92,7 +92,7 @@ test('desligamento: revoga acessos e publica evento para encerrar sessoes', asyn
   const antes = (await (await pedir('svc.shell', '/v2/eventos')).json()).length
   assert.equal((await pedir('gnorte2', '/v2/pessoas/p-12/desligamento', {})).status, 204)
   const ev = await (await pedir('svc.shell', `/v2/eventos?desde=0`)).json()
-  assert.ok(ev.length > antes && ev.some((x) => x.tipo === 'PESSOA_DESLIGADA' && x.alvo === 'p-12'))
+  assert.ok(ev.length > antes && ev.some((x) => x.tipo === 'PESSOA_DESLIGADA' && x.alvo === 'p-12' && Array.isArray(x.sujeitos) && x.sujeitos.includes('norte1')))
   assert.equal((await pedir('norte1', '/v2/eu')).status, 401)
 })
 
@@ -235,4 +235,53 @@ test('rota de zona: registro e remocao viram eventos de auditoria com { zona, or
   assert.equal(registro[0].origem, 'http://127.0.0.1:3003')
   assert.equal(ev.filter((x) => x.tipo === 'ROTA_DE_ZONA_REMOVIDA' && x.zona === 'zona3').length, 1)
   assert.ok(ev.some((x) => x.tipo === 'ROTA_DE_ZONA_REGISTRADA' && x.zona === 'zona2'), 'o registro de zona2 acima tambem')
+})
+
+// --- eventos de acesso: lidos só pelo shell, com cursor e sujeitos (G5, ADR-0014) -----------------
+
+test('eventos: so o shell le; sem credencial 401; outro servico ou pessoa (inclusive auditor e admin) recebe 404', async () => {
+  assert.equal((await fetch(`${url}/v2/eventos`)).status, 401)
+  for (const quem of ['svc.zona1', 'svc.zona2', 'svc.idp', 'svc.bff', 'admin1', 'auditor1', 'gnorte1']) {
+    assert.equal((await pedir(quem, '/v2/eventos')).status, 404, quem)
+  }
+  assert.equal((await pedir('svc.shell', '/v2/eventos')).status, 200)
+})
+
+test('eventos: cursor desde filtra seq > desde na fronteira exata e recusa cursor invalido com 422', async () => {
+  const todos = await (await pedir('svc.shell', '/v2/eventos?desde=0')).json()
+  assert.ok(todos.length >= 2)
+  const ultimo = todos.at(-1).seq
+  const penultimo = todos.at(-2).seq
+  const soUltimo = await (await pedir('svc.shell', `/v2/eventos?desde=${penultimo}`)).json()
+  assert.deepEqual(soUltimo.map((e) => e.seq), [ultimo], 'desde=penultimo nao pode repetir o penultimo (seq > desde)')
+  assert.deepEqual(await (await pedir('svc.shell', `/v2/eventos?desde=${ultimo}`)).json(), [], 'desde=ultimo devolve lista vazia')
+  for (const invalido of ['-1', 'abc', '1.5', '1a', 'NaN', '']) {
+    const r = await pedir('svc.shell', `/v2/eventos?desde=${encodeURIComponent(invalido)}`)
+    assert.equal(r.status, 422, `desde=${invalido}`)
+    assert.deepEqual(await r.json(), { codigo: 'CURSOR_INVALIDO' })
+  }
+})
+
+test('eventos: PESSOA_DESLIGADA e PESSOA_SUSPENSA trazem sujeitos (sub e login) e nenhum evento vaza CPF', async () => {
+  const u = await subir(criarGestaoDeAcessoV2({ agora: () => new Date('2026-09-22T12:00:00Z') }))
+  const ch = (login, cam, corpo, metodo = corpo ? 'POST' : 'GET') => fetch(`${u}${cam}`, {
+    method: metodo,
+    headers: { authorization: login.startsWith('svc.') ? `Bearer ${login}` : `Bearer dev.${login}`, 'content-type': 'application/json' },
+    ...(corpo ? { body: JSON.stringify(corpo) } : {}),
+  })
+  // p-20 (davi) tem sub UUID e login 'davi'; carla (admin-geral) desliga p-20
+  assert.equal((await ch('carla', '/v2/pessoas/p-20/desligamento', { justificativa: 'fim do vinculo' })).status, 204)
+  // gnorte1 faz confirmacao periodica da unidade norte confirmando p-12 (norte1) e omitindo p-13 (norte2): publica PESSOA_SUSPENSA para p-13
+  assert.equal((await ch('gnorte1', '/v2/unidades/norte/confirmacoes', { confirmadas: ['p-07', 'p-08', 'p-12'] })).status, 200)
+  const ev = await (await ch('svc.shell', '/v2/eventos?desde=0')).json()
+  const desligada = ev.find((x) => x.tipo === 'PESSOA_DESLIGADA' && x.alvo === 'p-20')
+  assert.ok(desligada, 'PESSOA_DESLIGADA publicada')
+  assert.deepEqual(desligada.sujeitos, ['00000000-0000-4000-8000-00000000a004', 'davi'])
+  const suspensa = ev.find((x) => x.tipo === 'PESSOA_SUSPENSA' && x.alvo === 'p-13')
+  assert.ok(suspensa, 'PESSOA_SUSPENSA publicada')
+  assert.deepEqual(suspensa.sujeitos, ['idp-norte2', 'norte2'])
+  const texto = JSON.stringify(ev)
+  for (const cpf of ['44477700083', '50752917080', '52601815906']) {
+    assert.ok(!texto.includes(cpf), `CPF ${cpf} vazou em /v2/eventos`)
+  }
 })

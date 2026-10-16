@@ -366,7 +366,7 @@ const SERVIDORES = {
   'gestao-acesso-v2/servidor.mjs': criarGestaoDeAcessoV2,
 }
 // rotas que admitem token de serviço em modo JWT; o teste dedicado de cada uma está abaixo
-const MANIFESTO = new Set(['POST /v1/manifestos', 'POST /v2/modulos/manifesto', 'POST /v2/zonas/x/rota', 'DELETE /v2/zonas/x/rota', 'GET /v2/zonas'])
+const MANIFESTO = new Set(['POST /v1/manifestos', 'POST /v2/modulos/manifesto', 'POST /v2/zonas/x/rota', 'DELETE /v2/zonas/x/rota', 'GET /v2/zonas', 'GET /v2/eventos'])
 
 /** Toda rota declarada no fonte de cada domínio, com um caminho de exemplo: rota nova entra sozinha. */
 function rotasDe(arquivo) {
@@ -393,10 +393,10 @@ test('modo JWT: token de servico recusado com 401 em toda rota de todo dominio, 
       }
     }
   }
-  assert.ok(total >= 3 * 39, `so ${total} chamadas: a varredura de rotas encolheu`)
+  assert.ok(total >= 3 * 38, `so ${total} chamadas: a varredura de rotas encolheu`)
 })
 
-test('modo JWT: primeiro-acesso, decisoes e eventos fecham para svc.idp e para qualquer servico', async () => {
+test('modo JWT: primeiro-acesso e decisoes fecham para svc.idp e para qualquer servico; eventos aceita so svc.shell', async () => {
   reiniciarIdp()
   const v2 = await subir(criarGestaoDeAcessoV2())
   const pedir = (caminho, svc, corpo) => fetch(`${v2}${caminho}`, {
@@ -405,8 +405,9 @@ test('modo JWT: primeiro-acesso, decisoes e eventos fecham para svc.idp e para q
   for (const svc of ['svc.idp', 'svc.zona1', 'svc.bff']) {
     assert.equal((await pedir('/v2/primeiro-acesso', svc, { cpf: '52998224725', sub: 'sub-forjado' })).status, 401, `primeiro-acesso ${svc}`)
     assert.equal((await pedir('/v2/decisoes', svc, { pessoa: 'p-1', modulo: 'zona1', funcionalidade: 'recursos.ver' })).status, 401, `decisoes ${svc}`)
-    assert.equal((await pedir('/v2/eventos', svc)).status, 401, `eventos ${svc}`)
+    assert.equal((await pedir('/v2/eventos', svc)).status, 404, `eventos ${svc}`)
   }
+  assert.equal((await pedir('/v2/eventos', 'svc.shell')).status, 200, 'eventos svc.shell')
   // dentes: um JWT válido de usuário nessas rotas não é 401 de credencial ausente por acaso do stub
   assert.equal((await fetch(`${v2}/v2/eu`, { headers: { authorization: `Bearer ${assinar(claims({ preferred_username: 'ana' }))}` } })).status, 200)
 })
@@ -430,10 +431,10 @@ test('modo JWT: registro de manifesto aceita so o modulo do proprio servico (v2:
   assert.equal((await registrar('svc.zona1')).status, 403, 'v1: modulo de outro servico')
 })
 
-// --- rotas do mapa de zonas em modo JWT (C3, ADR-0015) ------------------------------------------------
-// As três rotas do mapa admitem `svc.<aplicacao>` com IDP_EMISSOR, como o manifesto; as demais seguem 401.
+// --- rotas do mapa de zonas e de eventos em modo JWT (C3, ADR-0015; G5, ADR-0014) ---------------------
+// As três rotas do mapa e GET /v2/eventos admitem `svc.<aplicacao>` com IDP_EMISSOR, como o manifesto; as demais seguem 401.
 
-test('modo JWT: rotas do mapa de zonas aceitam svc.*; o handler ainda confere quem e o servico', async () => {
+test('modo JWT: rotas do mapa de zonas e eventos aceitam svc.*; o handler ainda confere quem e o servico', async () => {
   reiniciarIdp()
   const v2 = await subir(criarGestaoDeAcessoV2())
   const pedir = (metodo, caminho, svc, corpo) => fetch(`${v2}${caminho}`, {
@@ -444,9 +445,13 @@ test('modo JWT: rotas do mapa de zonas aceitam svc.*; o handler ainda confere qu
   assert.equal((await pedir('POST', '/v2/zonas/zona1/rota', 'svc.zona2', origem)).status, 403)
   assert.equal((await pedir('GET', '/v2/zonas', 'svc.shell')).status, 200)
   assert.equal((await pedir('GET', '/v2/zonas', 'svc.zona1')).status, 404)
+  assert.equal((await pedir('GET', '/v2/eventos', 'svc.shell')).status, 200)
+  assert.equal((await pedir('GET', '/v2/eventos', 'svc.zona1')).status, 404)
   assert.equal((await pedir('DELETE', '/v2/zonas/zona1/rota', 'svc.zona1')).status, 204)
   // sem credencial, e pessoa com JWT valido (nao e servico): as rotas continuam fechadas para elas
   assert.equal((await fetch(`${v2}/v2/zonas`)).status, 401)
+  assert.equal((await fetch(`${v2}/v2/eventos`)).status, 401)
   const jwtAdmin = `Bearer ${assinar(claims({ preferred_username: 'admin1' }))}`
   assert.equal((await fetch(`${v2}/v2/zonas`, { headers: { authorization: jwtAdmin } })).status, 404)
+  assert.equal((await fetch(`${v2}/v2/eventos`, { headers: { authorization: jwtAdmin } })).status, 404)
 })
