@@ -358,15 +358,14 @@ const { readFileSync } = await import('node:fs')
 const { criarDominioB } = await import('../src/dominio-b.mjs')
 const { criarDominioC } = await import('../src/dominio-c.mjs')
 const { criarDominioPlataforma } = await import('../src/dominio-plataforma.mjs')
-const { criarGestaoDeAcesso } = await import('../src/gestao-acesso.mjs')
 
 const SERVIDORES = {
   'dominio-a.mjs': criarDominioA, 'dominio-b.mjs': criarDominioB, 'dominio-c.mjs': criarDominioC,
-  'dominio-plataforma.mjs': criarDominioPlataforma, 'gestao-acesso.mjs': () => criarGestaoDeAcesso(),
+  'dominio-plataforma.mjs': criarDominioPlataforma,
   'gestao-acesso-v2/servidor.mjs': criarGestaoDeAcessoV2,
 }
 // rotas que admitem token de serviço em modo JWT; o teste dedicado de cada uma está abaixo
-const MANIFESTO = new Set(['POST /v1/manifestos', 'POST /v2/modulos/manifesto', 'POST /v2/zonas/x/rota', 'DELETE /v2/zonas/x/rota', 'GET /v2/zonas', 'GET /v2/eventos'])
+const MANIFESTO = new Set(['POST /v2/modulos/manifesto', 'POST /v2/zonas/x/rota', 'DELETE /v2/zonas/x/rota', 'GET /v2/zonas', 'GET /v2/eventos'])
 
 /** Toda rota declarada no fonte de cada domínio, com um caminho de exemplo: rota nova entra sozinha. */
 function rotasDe(arquivo) {
@@ -393,7 +392,7 @@ test('modo JWT: token de servico recusado com 401 em toda rota de todo dominio, 
       }
     }
   }
-  assert.ok(total >= 3 * 38, `so ${total} chamadas: a varredura de rotas encolheu`)
+  assert.ok(total >= 3 * 32, `so ${total} chamadas: a varredura de rotas encolheu`)
 })
 
 test('modo JWT: primeiro-acesso e decisoes fecham para svc.idp e para qualquer servico; eventos aceita so svc.shell', async () => {
@@ -412,7 +411,7 @@ test('modo JWT: primeiro-acesso e decisoes fecham para svc.idp e para qualquer s
   assert.equal((await fetch(`${v2}/v2/eu`, { headers: { authorization: `Bearer ${assinar(claims({ preferred_username: 'ana' }))}` } })).status, 200)
 })
 
-test('modo JWT: registro de manifesto aceita so o modulo do proprio servico (v2: 200; v1: 204), outro id e 403', async () => {
+test('modo JWT: registro de manifesto aceita so o modulo do proprio servico (200), outro id e 403', async () => {
   reiniciarIdp()
   const v2 = await subir(criarGestaoDeAcessoV2())
   const manifesto = (svc, corpo) => fetch(`${v2}/v2/modulos/manifesto`, {
@@ -423,12 +422,6 @@ test('modo JWT: registro de manifesto aceita so o modulo do proprio servico (v2:
   assert.equal((await manifesto('svc.zona2', zona1)).status, 403, 'modulo de outro servico')
   assert.equal((await manifesto('svc.idp', zona1)).status, 403, 'svc.idp registrando zona1')
   assert.equal((await manifesto('dev.ana.x', zona1)).status, 401, 'token dev')
-
-  const v1 = await subir(criarGestaoDeAcesso())
-  const m1 = { zona: 'zona2', modulos: [{ id: 'zona2.tarefas', rotulo: 'Tarefas', prefixo: '/zona2', restritoPorPadrao: true }], perfis: [], concessoes: {} }
-  const registrar = (svc) => fetch(`${v1}/v1/manifestos`, { method: 'POST', headers: { authorization: `Bearer ${svc}`, 'content-type': 'application/json' }, body: JSON.stringify(m1) })
-  assert.equal((await registrar('svc.zona2')).status, 204, 'v1: proprio modulo')
-  assert.equal((await registrar('svc.zona1')).status, 403, 'v1: modulo de outro servico')
 })
 
 // --- rotas do mapa de zonas e de eventos em modo JWT (C3, ADR-0015; G5, ADR-0014) ---------------------

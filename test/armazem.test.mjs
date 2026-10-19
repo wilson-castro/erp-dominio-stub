@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { criarArmazem, resetar } from '../src/armazem.mjs'
 import { criarDominioC } from '../src/dominio-c.mjs'
-import { criarEstadoDeAcesso, criarGestaoDeAcesso } from '../src/gestao-acesso.mjs'
 import { test, subir, como, post } from './apoio.mjs'
 
 const pasta = () => mkdtempSync(join(tmpdir(), 'stub-dados-'))
@@ -60,22 +59,12 @@ test('dominio C com pasta: tarefa concluida continua concluida depois de reinici
   assert.deepEqual(lista.find((t) => t.id === 't-1'), { id: 't-1', titulo: 'Revisar cadastro', concluida: true, versao: 4 })
 })
 
-test('gestao de acesso com pasta: atribuicao feita pelo admin sobrevive a reiniciar', async () => {
-  const dir = pasta()
-  const s1 = await subir(criarGestaoDeAcesso(criarEstadoDeAcesso({ dir })))
-  const r = await fetch(`${s1}/v1/atribuicoes`, post('carla', { usuario: 'davi', perfil: 'plataforma.usuario', atribuir: true }))
-  assert.equal(r.status, 204)
-  const e = criarEstadoDeAcesso({ dir })
-  assert.deepEqual([...e.atribuicoes.get('davi')], ['plataforma.usuario'])
-  assert.ok(e.atribuicoes.get('carla').has('plataforma.admin-acesso'))
-})
-
 test('servidor: todo dominio sobe com DADOS_DIR e responde a rota de leitura', async () => {
   const { DOMINIOS } = await import('../src/servidor.mjs')
   const dir = pasta()
   const leitura = {
     'dominio-a': '/v1/recursos', 'dominio-b': '/v1/indicadores', 'dominio-c': '/v1/tarefas',
-    plataforma: '/v1/avisos', 'gestao-acesso': '/v1/modulos-permitidos', 'gestao-acesso-v2': '/v2/eu',
+    plataforma: '/v1/avisos', 'gestao-acesso-v2': '/v2/eu',
   }
   for (const [nome, { criar }] of Object.entries(DOMINIOS)) {
     const url = await subir(criar({ dir }))
