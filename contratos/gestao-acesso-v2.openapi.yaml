@@ -46,10 +46,14 @@ paths:
 
   /v2/eventos:
     get:
-      summary: (serviço) Eventos de revogação para encerrar sessões (desligamento, suspensão, acesso revogado)
-      parameters: [ { name: desde, in: query, schema: { type: integer } } ]
+      summary: (shell) Eventos de revogação para encerrar sessões (desligamento, suspensão, acesso revogado)
+      description: Só `Bearer svc.shell`. Qualquer outro serviço ou pessoa recebe 404. Filtra estritamente por `seq > desde` (padrão `0`); cursor inválido responde 422 `CURSOR_INVALIDO`. Admite token de serviço também com `IDP_EMISSOR`.
+      parameters: [ { name: desde, in: query, schema: { type: integer, minimum: 0 } } ]
       responses:
         '200': { description: eventos, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Evento' } } } } }
+        '401': { $ref: '#/components/responses/Erro' }
+        '404': { $ref: '#/components/responses/Erro' }
+        '422': { $ref: '#/components/responses/Erro' }
 
   /v2/modulos/manifesto:
     post:
@@ -319,4 +323,5 @@ components:
         tipo: { type: string }
         autor: { type: [string, 'null'] }
         alvo: { type: [string, 'null'] }
+        sujeitos: { type: array, items: { type: string }, description: 'identificadores de sessão (sub OIDC e login) da pessoa afetada, quando o alvo é uma pessoa' }
         excecao: { type: boolean, description: administrador geral agindo sobre unidade parceira }

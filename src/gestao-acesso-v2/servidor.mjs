@@ -35,9 +35,14 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
 
   /** Toda mudança vira evento de auditoria; `excecao` marca o administrador geral agindo numa unidade parceira. */
   function registrar(tipo, autor, alvo, extra = {}) {
-    const alvoUnidade = extra.unidade ?? pessoa(alvo)?.unidade
+    const pAlvo = alvo ? pessoa(alvo) : null
+    const alvoUnidade = extra.unidade ?? pAlvo?.unidade
     const excecao = !!autor && ehAdmin(e, autor) && unidade(alvoUnidade)?.categoria === 'parceira'
-    e.eventos.push({ seq: e.eventos.length + 1, em: agora().toISOString(), tipo, autor, alvo, ...extra, ...(excecao ? { excecao: true } : {}) })
+    const sujeitos = pAlvo ? [...new Set([pAlvo.sub, pAlvo.login].filter(Boolean))] : undefined
+    e.eventos.push({
+      seq: e.eventos.length + 1, em: agora().toISOString(), tipo, autor, alvo,
+      ...(sujeitos ? { sujeitos } : {}), ...extra, ...(excecao ? { excecao: true } : {}),
+    })
     armazem.salvar()
   }
 
@@ -126,15 +131,19 @@ export function criarGestaoDeAcessoV2({ dir, agora = () => new Date() } = {}) {
       json(res, 200, acessoEfetivo(e, { pessoa: p?.id, modulo: c?.modulo, funcionalidade: c?.funcionalidade }, agora))
     }],
 
-    // Eventos para quem precisa reagir (ex.: encerrar sessões de quem foi desligado).
+    // Eventos para o shell encerrar sessões de quem foi desligado ou suspenso (G5, ADR-0014).
+    // Só `svc.shell` lê; admite token de serviço também com IDP_EMISSOR (ROTA_DE_SERVICO), como o mapa de zonas.
     ['GET', /^\/v2\/eventos$/, ({ req, res, servico }) => {
-      if (!servico) return erro(res, 401, 'SESSAO_EXPIRADA')
-      const desde = Number(new URL(req.url, 'http://x').searchParams.get('desde') ?? 0)
+      if (servico !== 'shell') return naoEncontrado(res)
+      const bruto = new URL(req.url, 'http://x').searchParams.get('desde')
+      if (bruto !== null && !/^\d+$/.test(bruto)) return erro(res, 422, 'CURSOR_INVALIDO')
+      const desde = bruto === null ? 0 : Number(bruto)
+      if (!Number.isSafeInteger(desde)) return erro(res, 422, 'CURSOR_INVALIDO')
       json(res, 200, e.eventos.filter((ev) => ev.seq > desde && ['PESSOA_DESLIGADA', 'ACESSO_REVOGADO', 'PESSOA_SUSPENSA'].includes(ev.tipo)))
-    }],
+    }, ROTA_DE_SERVICO],
 
     // O módulo declara as próprias funcionalidades; módulo novo nasce "validado" (restrito).
-    // Única rota que admite token de serviço com IDP_EMISSOR; `primeiro-acesso`, `decisoes` e `eventos`
+    // Admite token de serviço com IDP_EMISSOR (ROTA_DE_SERVICO); `primeiro-acesso` e `decisoes`
     // ficam fechadas nesse modo (ADR-0013, adendo 1).
     ['POST', /^\/v2\/modulos\/manifesto$/, async ({ req, res, servico }) => {
       const c = await lerCorpo(req)
